@@ -15,7 +15,9 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>('login');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
 
   useEffect(() => {
     api
@@ -123,6 +125,10 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
               required
               autoComplete="email"
               dir="ltr"
+              value={emailDraft}
+              onChange={(e) => {
+                setEmailDraft(e.target.value);
+              }}
               className="rounded-md border border-line bg-paper px-2 py-1.5"
             />
           </label>
@@ -142,6 +148,26 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
             <p role="alert" className="text-sm text-danger">
               {error}
             </p>
+          )}
+          {notice && (
+            <p role="status" className="text-sm text-ink-muted">
+              {notice}
+            </p>
+          )}
+          {mode === 'login' && (
+            <button
+              type="button"
+              className="self-start text-xs text-accent underline-offset-4 hover:underline disabled:opacity-60"
+              disabled={!emailDraft.includes('@') || busy}
+              onClick={() => {
+                // Same response whether or not the account exists (no enumeration).
+                void api.requestPasswordReset(emailDraft).finally(() => {
+                  setNotice(t.t('account.forgotSent'));
+                });
+              }}
+            >
+              {t.t('account.forgot')}
+            </button>
           )}
           <button
             type="submit"

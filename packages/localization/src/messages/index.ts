@@ -51,6 +51,18 @@ export const MESSAGE_KEYS = [
   'auth.password',
   'privacy.noHistory',
   'privacy.transient',
+  'account.verifyTitle',
+  'account.verifying',
+  'account.verified',
+  'account.verifyFailed',
+  'account.resetTitle',
+  'account.newPassword',
+  'account.resetAction',
+  'account.resetDone',
+  'account.resetFailed',
+  'account.forgot',
+  'account.forgotSent',
+  'account.backHome',
 ] as const;
 export type MessageKey = (typeof MESSAGE_KEYS)[number];
 
@@ -101,6 +113,19 @@ export const en: Catalog = {
   'auth.password': 'Password',
   'privacy.noHistory': 'No-history mode',
   'privacy.transient': 'Audio is processed live and not stored.',
+  'account.verifyTitle': 'Confirm your email',
+  'account.verifying': 'Confirming…',
+  'account.verified': 'Your email is confirmed. You can close this page.',
+  'account.verifyFailed': 'This link is invalid or has expired. Request a new one from the app.',
+  'account.resetTitle': 'Choose a new password',
+  'account.newPassword': 'New password',
+  'account.resetAction': 'Set password',
+  'account.resetDone': 'Your password was changed. Log in on all your devices again.',
+  'account.resetFailed':
+    'This link is invalid or has expired. Request a new reset from the login screen.',
+  'account.forgot': 'Forgot password?',
+  'account.forgotSent': 'If an account exists for that email, a reset link is on its way.',
+  'account.backHome': 'Back to Voxeli',
 };
 
 export const he: Catalog = {
@@ -152,6 +177,18 @@ export const he: Catalog = {
   'auth.password': 'סיסמה',
   'privacy.noHistory': 'מצב ללא היסטוריה',
   'privacy.transient': 'השמע מעובד בזמן אמת ואינו נשמר.',
+  'account.verifyTitle': 'אישור כתובת האימייל',
+  'account.verifying': 'מאשר…',
+  'account.verified': 'האימייל אושר. אפשר לסגור את הדף.',
+  'account.verifyFailed': 'הקישור אינו תקף או שפג תוקפו. בקשו קישור חדש מהאפליקציה.',
+  'account.resetTitle': 'בחירת סיסמה חדשה',
+  'account.newPassword': 'סיסמה חדשה',
+  'account.resetAction': 'שמירת סיסמה',
+  'account.resetDone': 'הסיסמה שונתה. התחברו מחדש בכל המכשירים.',
+  'account.resetFailed': 'הקישור אינו תקף או שפג תוקפו. בקשו איפוס חדש ממסך ההתחברות.',
+  'account.forgot': 'שכחתם סיסמה?',
+  'account.forgotSent': 'אם קיים חשבון לאימייל הזה, קישור לאיפוס בדרך.',
+  'account.backHome': 'חזרה ל־Voxeli',
 };
 
 export const ar: Catalog = {
@@ -205,6 +242,19 @@ export const ar: Catalog = {
   'auth.password': 'كلمة المرور',
   'privacy.noHistory': 'وضع بدون سجل',
   'privacy.transient': 'تتم معالجة الصوت مباشرةً ولا يتم تخزينه.',
+  'account.verifyTitle': 'تأكيد البريد الإلكتروني',
+  'account.verifying': 'جارٍ التأكيد…',
+  'account.verified': 'تم تأكيد بريدك الإلكتروني. يمكنك إغلاق هذه الصفحة.',
+  'account.verifyFailed': 'هذا الرابط غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا من التطبيق.',
+  'account.resetTitle': 'اختر كلمة مرور جديدة',
+  'account.newPassword': 'كلمة المرور الجديدة',
+  'account.resetAction': 'حفظ كلمة المرور',
+  'account.resetDone': 'تم تغيير كلمة المرور. سجّل الدخول مجددًا على جميع أجهزتك.',
+  'account.resetFailed':
+    'هذا الرابط غير صالح أو انتهت صلاحيته. اطلب إعادة تعيين جديدة من شاشة الدخول.',
+  'account.forgot': 'هل نسيت كلمة المرور؟',
+  'account.forgotSent': 'إذا كان هناك حساب لهذا البريد، فرابط إعادة التعيين في طريقه إليك.',
+  'account.backHome': 'العودة إلى Voxeli',
 };
 
 export const de: Catalog = {
@@ -255,6 +305,21 @@ export const de: Catalog = {
   'auth.password': 'Passwort',
   'privacy.noHistory': 'Modus ohne Verlauf',
   'privacy.transient': 'Audio wird live verarbeitet und nicht gespeichert.',
+  'account.verifyTitle': 'E-Mail bestätigen',
+  'account.verifying': 'Wird bestätigt…',
+  'account.verified': 'Deine E-Mail ist bestätigt. Du kannst diese Seite schließen.',
+  'account.verifyFailed':
+    'Dieser Link ist ungültig oder abgelaufen. Fordere in der App einen neuen an.',
+  'account.resetTitle': 'Neues Passwort wählen',
+  'account.newPassword': 'Neues Passwort',
+  'account.resetAction': 'Passwort speichern',
+  'account.resetDone': 'Dein Passwort wurde geändert. Melde dich auf allen Geräten neu an.',
+  'account.resetFailed':
+    'Dieser Link ist ungültig oder abgelaufen. Fordere im Anmeldebildschirm einen neuen an.',
+  'account.forgot': 'Passwort vergessen?',
+  'account.forgotSent':
+    'Falls ein Konto zu dieser E-Mail existiert, ist ein Link zum Zurücksetzen unterwegs.',
+  'account.backHome': 'Zurück zu Voxeli',
 };
 
 export const ru: Catalog = {
@@ -306,6 +371,20 @@ export const ru: Catalog = {
   'auth.password': 'Пароль',
   'privacy.noHistory': 'Режим без истории',
   'privacy.transient': 'Аудио обрабатывается в реальном времени и не сохраняется.',
+  'account.verifyTitle': 'Подтверждение электронной почты',
+  'account.verifying': 'Подтверждаем…',
+  'account.verified': 'Адрес подтверждён. Эту страницу можно закрыть.',
+  'account.verifyFailed': 'Ссылка недействительна или устарела. Запросите новую в приложении.',
+  'account.resetTitle': 'Выберите новый пароль',
+  'account.newPassword': 'Новый пароль',
+  'account.resetAction': 'Сохранить пароль',
+  'account.resetDone': 'Пароль изменён. Войдите заново на всех устройствах.',
+  'account.resetFailed':
+    'Ссылка недействительна или устарела. Запросите новый сброс на экране входа.',
+  'account.forgot': 'Забыли пароль?',
+  'account.forgotSent':
+    'Если аккаунт с таким адресом существует, ссылка для сброса уже отправлена.',
+  'account.backHome': 'Вернуться в Voxeli',
 };
 
 export const fr: Catalog = {
@@ -356,6 +435,21 @@ export const fr: Catalog = {
   'auth.password': 'Mot de passe',
   'privacy.noHistory': 'Mode sans historique',
   'privacy.transient': 'L’audio est traité en direct et n’est pas conservé.',
+  'account.verifyTitle': 'Confirmer votre e-mail',
+  'account.verifying': 'Confirmation…',
+  'account.verified': 'Votre e-mail est confirmé. Vous pouvez fermer cette page.',
+  'account.verifyFailed':
+    'Ce lien est invalide ou a expiré. Demandez-en un nouveau depuis l’application.',
+  'account.resetTitle': 'Choisir un nouveau mot de passe',
+  'account.newPassword': 'Nouveau mot de passe',
+  'account.resetAction': 'Enregistrer',
+  'account.resetDone': 'Votre mot de passe a été modifié. Reconnectez-vous sur tous vos appareils.',
+  'account.resetFailed':
+    'Ce lien est invalide ou a expiré. Demandez une nouvelle réinitialisation depuis l’écran de connexion.',
+  'account.forgot': 'Mot de passe oublié ?',
+  'account.forgotSent':
+    'Si un compte existe pour cet e-mail, un lien de réinitialisation est en route.',
+  'account.backHome': 'Retour à Voxeli',
 };
 
 export const es: Catalog = {
@@ -405,6 +499,22 @@ export const es: Catalog = {
   'auth.password': 'Contraseña',
   'privacy.noHistory': 'Modo sin historial',
   'privacy.transient': 'El audio se procesa en vivo y no se almacena.',
+  'account.verifyTitle': 'Confirma tu correo',
+  'account.verifying': 'Confirmando…',
+  'account.verified': 'Tu correo está confirmado. Puedes cerrar esta página.',
+  'account.verifyFailed':
+    'Este enlace no es válido o ha caducado. Solicita uno nuevo desde la app.',
+  'account.resetTitle': 'Elige una nueva contraseña',
+  'account.newPassword': 'Nueva contraseña',
+  'account.resetAction': 'Guardar contraseña',
+  'account.resetDone':
+    'Tu contraseña se cambió. Vuelve a iniciar sesión en todos tus dispositivos.',
+  'account.resetFailed':
+    'Este enlace no es válido o ha caducado. Solicita un nuevo restablecimiento desde la pantalla de acceso.',
+  'account.forgot': '¿Olvidaste la contraseña?',
+  'account.forgotSent':
+    'Si existe una cuenta con ese correo, el enlace de restablecimiento va en camino.',
+  'account.backHome': 'Volver a Voxeli',
 };
 
 export const CATALOGS: Record<UiLocale, Catalog> = { en, he, ar, de, ru, fr, es };

@@ -27,6 +27,7 @@ pnpm --filter @voxeli/api eval                 # AI regression eval; add --json=
 pnpm --filter @voxeli/web dev                  # http://localhost:3000, API_URL env → BFF
 cd apps/mobile && flutter gen-l10n && flutter analyze && flutter test
 docker compose -f infrastructure/docker-compose.yml up -d   # local Postgres + Redis
+scripts/smoke.sh <api-url> [web-url]           # post-deploy gates (see docs/DEPLOYMENT.md)
 ```
 
 Test DB: `postgres://voxeli:voxeli@localhost:5432/voxeli_test` (vitest sets env; migrations run in `beforeAll`).

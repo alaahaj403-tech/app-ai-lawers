@@ -52,6 +52,10 @@ export const realtimeTierEnum = pgEnum('realtime_tier', [
   'tier2_streaming',
   'tier3_chunked',
 ]);
+export const authTokenKindEnum = pgEnum('auth_token_kind', [
+  'email_verification',
+  'password_reset',
+]);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -99,6 +103,30 @@ export const subscriptions = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex('subscriptions_user_uq').on(t.userId)],
+);
+
+/**
+ * Single-use, expiring tokens delivered by email (verification, password
+ * reset). Only the SHA-256 of the token is stored; the plaintext exists once,
+ * inside the email.
+ */
+export const authTokens = pgTable(
+  'auth_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: authTokenKindEnum('kind').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('auth_tokens_hash_uq').on(t.tokenHash),
+    index('auth_tokens_user_idx').on(t.userId, t.kind),
+  ],
 );
 
 /** Refresh-token sessions. Only a SHA-256 hash of the token is stored. */

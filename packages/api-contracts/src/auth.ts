@@ -35,6 +35,7 @@ export const userProfileSchema = z.object({
   locale: z.enum(UI_LOCALES),
   plan: z.enum(['free', 'pro', 'business']),
   role: z.enum(['user', 'admin']),
+  emailVerified: z.boolean(),
   createdAt: z.string(),
 });
 export const authResponseSchema = z.object({ user: userProfileSchema, tokens: authTokensSchema });
@@ -43,3 +44,14 @@ export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type UserProfile = z.infer<typeof userProfileSchema>;
+
+// ---- account lifecycle ------------------------------------------------------
+const tokenSchema = z.string().min(20).max(200);
+
+export const confirmEmailSchema = z.object({ token: tokenSchema });
+export const passwordResetRequestSchema = z.object({ email: emailSchema });
+export const passwordResetConfirmSchema = z.object({
+  token: tokenSchema,
+  password: passwordSchema,
+});
+export const deleteAccountSchema = z.object({ password: passwordSchema });

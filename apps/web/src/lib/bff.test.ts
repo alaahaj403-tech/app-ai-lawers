@@ -15,6 +15,10 @@ describe('BFF allowlist', () => {
     expect(isAllowed('DELETE', 'v1/translations/123e4567-e89b-12d3-a456-426614174000')).toBe(true);
     expect(isAllowed('DELETE', 'v1/translations/../users')).toBe(false);
     expect(isAllowed('GET', 'v1/auth/me')).toBe(true);
+    expect(isAllowed('POST', 'v1/auth/password-reset/confirm')).toBe(true);
+    expect(isAllowed('GET', 'v1/account/export')).toBe(true);
+    expect(isAllowed('DELETE', 'v1/account')).toBe(true);
+    expect(isAllowed('GET', 'v1/account')).toBe(false);
   });
   it('identifies auth endpoints', () => {
     expect(isAuthPath('v1/auth/login')).toBe('login');

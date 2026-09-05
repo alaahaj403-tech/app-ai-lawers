@@ -11,7 +11,11 @@ import { createAIContainer } from './ai/container.js';
 import { authPlugin } from './plugins/auth.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { requestContextPlugin } from './plugins/request-context.js';
+import { AccountService } from './modules/account/service.js';
+import { accountRoutes } from './modules/account/routes.js';
 import { AuditService } from './modules/audit/service.js';
+import { ConsoleEmailProvider, ResendEmailProvider } from './modules/email/provider.js';
+import type { EmailProvider } from './modules/email/provider.js';
 import { AuthService } from './modules/auth/service.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { TokenService } from './modules/auth/tokens.js';
@@ -32,9 +36,15 @@ export interface BuiltApp {
   close: () => Promise<void>;
 }
 
+/** Test seams. Production wiring ignores them. */
+export interface AppOverrides {
+  email?: EmailProvider;
+}
+
 export async function buildApp(
   env: ServerEnv,
   raw: NodeJS.ProcessEnv = process.env,
+  overrides: AppOverrides = {},
 ): Promise<BuiltApp> {
   const app = Fastify({
     logger: {
@@ -79,7 +89,14 @@ export async function buildApp(
   const ai = createAIContainer(env, usage, raw);
   const tokens = new TokenService(env);
   const audit = new AuditService(db);
+  const email: EmailProvider =
+    overrides.email ??
+    (env.EMAIL_PROVIDER === 'resend' && env.RESEND_API_KEY && env.EMAIL_FROM
+      ? new ResendEmailProvider(env.RESEND_API_KEY, env.EMAIL_FROM)
+      : new ConsoleEmailProvider(app.log));
+  const account = new AccountService(db, email, audit, env.APP_BASE_URL, app.log);
   const auth = new AuthService(db, tokens, audit, env.REFRESH_TOKEN_TTL_DAYS);
+  auth.onRegistered = (userId, ctx) => account.sendVerification(userId, ctx);
   const quota = new QuotaService(db);
   const flags = new FlagService(db, env.NODE_ENV === 'test' ? 0 : 5_000);
   const repo = new TranslationRepository(db);
@@ -106,10 +123,20 @@ export async function buildApp(
   await app.register(authPlugin, { tokens });
   registerErrorHandler(app);
 
-  await app.register(healthRoutes, { db, router: ai.router, providerMode: ai.providerMode });
+  await app.register(healthRoutes, {
+    db,
+    router: ai.router,
+    providerMode: ai.providerMode,
+    emailProvider: email.id,
+  });
   await app.register(authRoutes, {
     prefix: '/v1/auth',
     auth,
+    authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
+  });
+  await app.register(accountRoutes, {
+    prefix: '/v1',
+    account,
     authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
   });
   await app.register(translationRoutes, {

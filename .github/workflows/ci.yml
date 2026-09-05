@@ -77,9 +77,50 @@ jobs:
           channel: stable
           flutter-version: 3.47.2
           cache: true
+      - name: Android platform 37 (required by flutter_secure_storage 11; canary channel)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 --install "platforms;android-37.0" >/dev/null || true
       - run: flutter pub get
       - run: flutter gen-l10n
       - run: flutter analyze
       - run: flutter test
       - name: Android debug build
         run: flutter build apk --debug --dart-define=API_URL=https://api.example.invalid
+
+  images:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [node]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/api/Dockerfile
+          push: false
+          tags: voxeli-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          tags: voxeli-web:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: API image boots and answers /health
+        run: |
+          docker network create smoke
+          docker run -d --network smoke --name pg -e POSTGRES_USER=voxeli -e POSTGRES_PASSWORD=voxeli -e POSTGRES_DB=voxeli postgres:16-alpine
+          for i in $(seq 1 30); do docker exec pg pg_isready -U voxeli && break; sleep 1; done
+          docker run --rm --network smoke -e DATABASE_URL=postgres://voxeli:voxeli@pg:5432/voxeli voxeli-api:ci node dist/db/migrate.js
+          docker run -d --network smoke --name api -p 4000:4000 \
+            -e DATABASE_URL=postgres://voxeli:voxeli@pg:5432/voxeli \
+            -e JWT_SECRET=ci-only-secret-ci-only-secret-ci-only-secret \
+            -e AI_PROVIDER=mock -e NODE_ENV=development voxeli-api:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4000/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:4000/ready

@@ -92,10 +92,12 @@ async function handle(
   }
 
   const text = await upstream.text();
+  const disposition = upstream.headers.get('content-disposition');
   const res = new NextResponse(text.length ? text : null, {
     status: upstream.status,
     headers: {
       'content-type': upstream.headers.get('content-type') ?? 'application/json',
+      ...(disposition ? { 'content-disposition': disposition } : {}),
       ...(correlationOut ? { 'x-correlation-id': correlationOut } : {}),
     },
   });

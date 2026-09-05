@@ -22,6 +22,9 @@ export interface AuthContext {
 }
 
 export class AuthService {
+  /** Called after a successful registration (e.g. to send a verification email). Never fails the request. */
+  onRegistered: ((userId: string, ctx: AuthContext) => Promise<void>) | null = null;
+
   constructor(
     private readonly db: Db,
     private readonly tokens: TokenService,
@@ -59,6 +62,9 @@ export class AuthService {
       correlationId: ctx.correlationId,
       ip: ctx.ip,
     });
+    if (this.onRegistered) {
+      await this.onRegistered(user.id, ctx).catch(() => undefined);
+    }
     return this.issue(user.id, ctx, input.deviceName);
   }
 
@@ -137,6 +143,7 @@ export class AuthService {
         email: users.email,
         locale: users.locale,
         role: users.role,
+        emailVerifiedAt: users.emailVerifiedAt,
         createdAt: users.createdAt,
         plan: subscriptions.plan,
       })
@@ -151,6 +158,7 @@ export class AuthService {
       locale: row.locale as UiLocale,
       role: row.role,
       plan: row.plan ?? 'free',
+      emailVerified: row.emailVerifiedAt !== null,
       createdAt: row.createdAt.toISOString(),
     };
   }

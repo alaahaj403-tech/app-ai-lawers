@@ -24,6 +24,14 @@ export const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   AI_PROVIDER: z.enum(['openai', 'mock']).optional(),
 
+  /** Public URL of the web app; used to build links in emails. */
+  APP_BASE_URL: z.url().default('http://localhost:3000'),
+  /** console logs the email (dev/test); resend delivers through the Resend API. */
+  EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  /** e.g. "Voxeli <no-reply@voxeli.app>" */
+  EMAIL_FROM: z.string().min(3).optional(),
+
   /** Comma-separated allowed browser origins. */
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 

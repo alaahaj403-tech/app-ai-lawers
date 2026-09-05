@@ -7,6 +7,7 @@ export const healthRoutes: FastifyPluginAsync<{
   db: Db;
   router: AIModelRouter;
   providerMode: string;
+  emailProvider: string;
 }> = async (app, deps) => {
   app.get('/health', async () => ({ status: 'ok', time: new Date().toISOString() }));
   app.get('/ready', async (_req, reply) => {
@@ -19,6 +20,7 @@ export const healthRoutes: FastifyPluginAsync<{
       status: 'ok',
       database: 'ok',
       aiProvider: deps.providerMode,
+      emailProvider: deps.emailProvider,
       providerHealth: deps.router.healthSnapshot(),
     };
   });

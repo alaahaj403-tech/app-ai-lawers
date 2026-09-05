@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "app.voxeli.voxeli"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage 11 ships an AAR compiled against API 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

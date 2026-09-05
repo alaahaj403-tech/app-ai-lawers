@@ -71,6 +71,14 @@ async function speech(text: string, language: string, retryOn401 = true): Promis
 
 export const api = {
   speech,
+  requestVerification: () => call<{ accepted: boolean }>('POST', 'v1/auth/verify-email/request'),
+  confirmEmail: (token: string) =>
+    call<{ verified: boolean }>('POST', 'v1/auth/verify-email/confirm', { token }, false),
+  requestPasswordReset: (email: string) =>
+    call<{ accepted: boolean }>('POST', 'v1/auth/password-reset/request', { email }, false),
+  confirmPasswordReset: (token: string, password: string) =>
+    call<{ reset: boolean }>('POST', 'v1/auth/password-reset/confirm', { token, password }, false),
+  deleteAccount: (password: string) => call<undefined>('DELETE', 'v1/account', { password }),
   me: () => call<UserProfile>('GET', 'v1/auth/me'),
   register: (email: string, password: string, locale: string) =>
     call<Omit<AuthResponse, 'tokens'>>('POST', 'v1/auth/register', { email, password, locale }),

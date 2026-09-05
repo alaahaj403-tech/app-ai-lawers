@@ -8,6 +8,13 @@
       "when": 1788566291122,
       "tag": "0000_nebulous_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788646569724,
+      "tag": "0001_auth_tokens",
+      "breakpoints": true
     }
   ]
 }

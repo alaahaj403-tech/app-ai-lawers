@@ -12,6 +12,10 @@ export const REFRESH_COOKIE = 'voxeli_rt';
 const ALLOWED: readonly { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^v1\/auth\/(register|login|refresh|logout)$/ },
   { method: 'GET', pattern: /^v1\/auth\/me$/ },
+  { method: 'POST', pattern: /^v1\/auth\/verify-email\/(request|confirm)$/ },
+  { method: 'POST', pattern: /^v1\/auth\/password-reset\/(request|confirm)$/ },
+  { method: 'GET', pattern: /^v1\/account\/export$/ },
+  { method: 'DELETE', pattern: /^v1\/account$/ },
   { method: 'POST', pattern: /^v1\/translate$/ },
   { method: 'POST', pattern: /^v1\/speech$/ },
   { method: 'GET', pattern: /^v1\/translations$/ },

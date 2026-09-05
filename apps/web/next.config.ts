@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server for the Docker image (apps/web/Dockerfile).
+  output: 'standalone',
   poweredByHeader: false,
   transpilePackages: ['@voxeli/domain', '@voxeli/localization', '@voxeli/api-contracts'],
   async headers() {
