@@ -4,6 +4,9 @@ dist/
 .next/
 out/
 coverage/
+*.tsbuildinfo
+# AI evaluation harness output (pnpm --filter @voxeli/api eval --json=...)
+eval.json
 *.log
 .env
 .env.*

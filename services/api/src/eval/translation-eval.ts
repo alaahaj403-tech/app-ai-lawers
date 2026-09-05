@@ -5,7 +5,7 @@ import { REGRESSION_CASES, extractProtectedEntities } from '@voxeli/translation-
 import type { RegressionCase } from '@voxeli/translation-core';
 import type { Plan } from '@voxeli/domain';
 import { createAIContainer } from '../ai/container.js';
-import { loadEnv } from '../env.js';
+import { loadAIEnv } from '../env.js';
 
 /**
  * AI evaluation harness (spec §65). Runs the controlled regression corpus
@@ -18,6 +18,10 @@ import { loadEnv } from '../env.js';
  *   - whether a repair pass was needed
  *   - which slot answered and whether routing degraded
  *   - latency and provider-reported token usage / estimated cost
+ *
+ * Reads only the AI part of the environment (OPENAI_API_KEY / AI_PROVIDER) —
+ * it opens no database and signs no tokens. Without a key the mock provider
+ * answers and the run measures plumbing, not translation quality.
  *
  * Usage:
  *   pnpm --filter @voxeli/api eval                 # all cases
@@ -65,7 +69,7 @@ function parseArgs(argv: readonly string[]): Args {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const env = loadEnv();
+  const env = loadAIEnv();
 
   const usage: AIUsageRecord[] = [];
   const ai = createAIContainer(env, { record: (r) => void usage.push(r) });

@@ -5,3 +5,4 @@ dist
 pnpm-lock.yaml
 apps/mobile
 drizzle/meta
+eval.json

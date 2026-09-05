@@ -7,7 +7,7 @@ import {
 } from '@voxeli/ai-core';
 import type { RouterProviders, UsageRecorder } from '@voxeli/ai-core';
 import { resolveModelConfig } from '@voxeli/config';
-import type { ModelConfig, ServerEnv } from '@voxeli/config';
+import type { AIEnv, ModelConfig } from '@voxeli/config';
 import { TranslationService } from '@voxeli/translation-core';
 
 export interface AIContainer {
@@ -23,7 +23,7 @@ export interface AIContainer {
  * Production refuses to start in mock mode (enforced by env validation).
  */
 export function createAIContainer(
-  env: ServerEnv,
+  env: AIEnv,
   usage: UsageRecorder,
   raw: NodeJS.ProcessEnv = process.env,
 ): AIContainer {
