@@ -14,6 +14,10 @@ export interface ProtectedEntity {
   readonly raw: string;
   /** Canonical digits-only (or lowercased) form used for verification. */
   readonly canonical: string;
+  /** Offset of `raw` in the text it was extracted from. */
+  readonly start: number;
+  /** Offset one past the end of `raw`. */
+  readonly end: number;
 }
 
 // Order matters: more specific first so a phone number is not also counted as several numbers.
@@ -90,7 +94,7 @@ export function extractProtectedEntities(text: string): ProtectedEntity[] {
         continue;
       if (kind === 'phone' && canonical.length < 7) continue;
       consumed.push([start, end]);
-      found.push({ kind, raw, canonical });
+      found.push({ kind, raw, canonical, start, end });
     }
   }
   return found;

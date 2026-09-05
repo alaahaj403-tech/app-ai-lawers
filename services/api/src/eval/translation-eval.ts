@@ -1,7 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { AIUsageRecord } from '@voxeli/ai-core';
-import { REGRESSION_CASES, extractProtectedEntities } from '@voxeli/translation-core';
+import {
+  REGRESSION_CASES,
+  detectScriptLeaks,
+  extractProtectedEntities,
+  scriptOf,
+} from '@voxeli/translation-core';
 import type { RegressionCase } from '@voxeli/translation-core';
 import type { Plan } from '@voxeli/domain';
 import { createAIContainer } from '../ai/container.js';
@@ -15,6 +20,7 @@ import { loadAIEnv } from '../env.js';
  * It does NOT score translation "quality" with a number — we do not invent
  * metrics. What it measures objectively:
  *   - entity preservation (numbers, money, dates, phones, URLs, IDs)
+ *   - source-script leakage (words left in the source script)
  *   - whether a repair pass was needed
  *   - which slot answered and whether routing degraded
  *   - latency and provider-reported token usage / estimated cost
@@ -35,6 +41,8 @@ interface CaseResult {
   ok: boolean;
   missingEntities: string[];
   integrityViolations: string[];
+  /** Source-script words left in the output. Empty for same-script pairs. */
+  scriptLeaks: string[];
   repaired: boolean;
   slot: string;
   degraded: boolean;
@@ -118,13 +126,24 @@ async function main(): Promise<void> {
           !outcome.result.translatedText.includes(m),
       );
 
+      // A word left in the source script is a broken translation, not a
+      // stylistic variant — the entity checks above cannot see it.
+      const scriptLeaks = detectScriptLeaks(outcome.result.translatedText, {
+        sourceLanguage: testCase.sourceLanguage,
+        targetLanguage: testCase.targetLanguage,
+      });
+
       results.push({
         id: testCase.id,
         category: testCase.category,
         languagePair: `${testCase.sourceLanguage}→${testCase.targetLanguage}`,
-        ok: missing.length === 0 && outcome.result.integrity.violations.length === 0,
+        ok:
+          missing.length === 0 &&
+          outcome.result.integrity.violations.length === 0 &&
+          scriptLeaks.length === 0,
         missingEntities: missing,
         integrityViolations: [...outcome.result.integrity.violations],
+        scriptLeaks,
         repaired: outcome.repaired,
         slot: outcome.routing.slot,
         degraded: outcome.routing.degraded,
@@ -139,6 +158,7 @@ async function main(): Promise<void> {
         ok: false,
         missingEntities: [...testCase.mustPreserve],
         integrityViolations: [],
+        scriptLeaks: [],
         repaired: false,
         slot: '-',
         degraded: false,
@@ -170,6 +190,13 @@ async function main(): Promise<void> {
   console.log(`  passed         : ${results.length - failed.length}/${results.length}`);
   console.log(`  repaired       : ${results.filter((r) => r.repaired).length}`);
   console.log(`  degraded route : ${results.filter((r) => r.degraded).length}`);
+  // Only cross-script pairs are checkable, so report the denominator too —
+  // "0 leaks" over 0 checked outputs would otherwise read as a clean bill.
+  const leakCheckable = cases.filter(
+    (c) => scriptOf(c.sourceLanguage) !== scriptOf(c.targetLanguage),
+  ).length;
+  const leaking = results.filter((r) => r.scriptLeaks.length > 0).length;
+  console.log(`  script leaks   : ${leaking} of ${leakCheckable} cross-script cases checked`);
   console.log(`  latency        : p50 ${p50}ms · p95 ${p95}ms`);
   console.log(
     `  provider calls : ${usage.length} (${inputTokens} in / ${outputTokens} out tokens)`,
@@ -180,9 +207,14 @@ async function main(): Promise<void> {
   if (failed.length > 0) {
     console.log(`\nFailures`);
     for (const f of failed) {
-      console.log(
-        `  ${f.id}: ${f.error ?? `missing ${f.missingEntities.join(', ')} ${f.integrityViolations.join(', ')}`}`,
-      );
+      const reasons = [
+        f.missingEntities.length ? `missing ${f.missingEntities.join(', ')}` : '',
+        f.integrityViolations.length ? `integrity ${f.integrityViolations.join(', ')}` : '',
+        f.scriptLeaks.length
+          ? `source-script words left in output: ${f.scriptLeaks.join(', ')}`
+          : '',
+      ].filter(Boolean);
+      console.log(`  ${f.id}: ${f.error ?? reasons.join(' · ')}`);
     }
   }
 
