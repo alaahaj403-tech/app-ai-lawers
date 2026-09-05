@@ -25,8 +25,12 @@ const openAIKeySchema = z
 export const aiEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
-  /** AI provider credentials — server-side only. Absent => mock provider in non-production. */
-  OPENAI_API_KEY: openAIKeySchema.optional(),
+  /**
+   * AI provider credentials — server-side only. Absent => mock provider in
+   * non-production. An empty value counts as absent, so a test or CI job can
+   * blank the variable to guarantee it cannot reach a live provider.
+   */
+  OPENAI_API_KEY: z.preprocess((v) => (v === '' ? undefined : v), openAIKeySchema.optional()),
   AI_PROVIDER: z.enum(['openai', 'mock']).optional(),
 });
 

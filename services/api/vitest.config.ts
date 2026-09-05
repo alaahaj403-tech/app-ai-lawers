@@ -11,6 +11,9 @@ export default defineConfig({
         process.env.DATABASE_URL ?? 'postgres://voxeli:voxeli@localhost:5432/voxeli_test',
       JWT_SECRET: 'test-secret-test-secret-test-secret-test-secret',
       AI_PROVIDER: 'mock',
+      // Blanked deliberately: the suite must never be able to reach a live
+      // provider, and must not fail because of a developer's ambient key.
+      OPENAI_API_KEY: '',
       LOG_LEVEL: 'silent',
     },
   },

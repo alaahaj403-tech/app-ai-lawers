@@ -67,6 +67,11 @@ describe('validateAIEnv', () => {
   it('applies the same credential guard', () => {
     expect(validateAIEnv({ OPENAI_API_KEY: 'sk-sk-proj-abc' }).ok).toBe(false);
   });
+  it('treats an empty key as absent so a test run cannot reach a live provider', () => {
+    const r = validateAIEnv({ OPENAI_API_KEY: '' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.env.OPENAI_API_KEY).toBeUndefined();
+  });
 });
 
 describe('resolveModelConfig', () => {
