@@ -10,14 +10,33 @@ void main() {
 }
 
 class VoxeliApp extends StatelessWidget {
-  const VoxeliApp({super.key, this.locale});
+  const VoxeliApp({super.key, this.locale, this.fontFamily, this.fontFamilyFallback});
 
   /// Optional locale override (tests, previews). Null follows the device.
   final Locale? locale;
 
+  /// Optional font family (brand fonts once bundled; system fonts in previews).
+  final String? fontFamily;
+
+  /// Per-script fallbacks (e.g. Hebrew/Arabic faces) applied to every text style.
+  final List<String>? fontFamilyFallback;
+
   @override
   Widget build(BuildContext context) {
     const seed = Color(0xFF2F5DD6);
+    ThemeData themed(Brightness brightness) {
+      final base = ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: brightness),
+        useMaterial3: true,
+        fontFamily: fontFamily,
+      );
+      if (fontFamilyFallback == null) return base;
+      return base.copyWith(
+        textTheme: base.textTheme.apply(fontFamilyFallback: fontFamilyFallback),
+        primaryTextTheme: base.primaryTextTheme.apply(fontFamilyFallback: fontFamilyFallback),
+      );
+    }
+
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       locale: locale,
@@ -28,8 +47,9 @@ class VoxeliApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: seed), useMaterial3: true),
-      darkTheme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.dark), useMaterial3: true),
+      debugShowCheckedModeBanner: false,
+      theme: themed(Brightness.light),
+      darkTheme: themed(Brightness.dark),
       home: const TranslateScreen(),
     );
   }
