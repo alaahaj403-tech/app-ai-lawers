@@ -34,5 +34,11 @@
   "password": "Mot de passe",
   "noHistoryMode": "Mode sans historique",
   "transientNotice": "L’audio est traité en direct et n’est pas conservé.",
-  "delete": "Supprimer"
+  "delete": "Supprimer",
+  "settingsTitle": "Serveur",
+  "serverUrl": "Adresse du serveur",
+  "serverUrlHelp": "Où cette application envoie les traductions. À modifier uniquement pour tester votre propre serveur.",
+  "serverUrlInvalid": "Saisissez une adresse http(s) complète.",
+  "resetDefault": "Réinitialiser",
+  "cancel": "Annuler"
 }

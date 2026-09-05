@@ -34,5 +34,11 @@
   "password": "كلمة المرور",
   "noHistoryMode": "وضع بدون سجل",
   "transientNotice": "تتم معالجة الصوت مباشرةً ولا يتم تخزينه.",
-  "delete": "حذف"
+  "delete": "حذف",
+  "settingsTitle": "الخادم",
+  "serverUrl": "عنوان الخادم",
+  "serverUrlHelp": "إلى أين يرسل التطبيق الترجمات. غيّره فقط للاختبار مقابل خادمك الخاص.",
+  "serverUrlInvalid": "أدخل عنوان http(s) كاملًا.",
+  "resetDefault": "إعادة الضبط",
+  "cancel": "إلغاء"
 }

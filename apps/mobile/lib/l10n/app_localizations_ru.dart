@@ -130,4 +130,23 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get delete => 'Удалить';
+
+  @override
+  String get settingsTitle => 'Сервер';
+
+  @override
+  String get serverUrl => 'Адрес сервера';
+
+  @override
+  String get serverUrlHelp =>
+      'Куда приложение отправляет переводы. Меняйте только для тестов со своим сервером.';
+
+  @override
+  String get serverUrlInvalid => 'Введите полный адрес http(s).';
+
+  @override
+  String get resetDefault => 'Сбросить';
+
+  @override
+  String get cancel => 'Отмена';
 }

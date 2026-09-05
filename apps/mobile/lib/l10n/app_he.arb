@@ -34,5 +34,11 @@
   "password": "סיסמה",
   "noHistoryMode": "מצב ללא היסטוריה",
   "transientNotice": "השמע מעובד בזמן אמת ואינו נשמר.",
-  "delete": "מחיקה"
+  "delete": "מחיקה",
+  "settingsTitle": "שרת",
+  "serverUrl": "כתובת השרת",
+  "serverUrlHelp": "לאן האפליקציה שולחת תרגומים. לשינוי רק לצורך בדיקות מול שרת משלך.",
+  "serverUrlInvalid": "הזינו כתובת http(s) מלאה.",
+  "resetDefault": "איפוס",
+  "cancel": "ביטול"
 }

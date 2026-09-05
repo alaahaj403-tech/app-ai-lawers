@@ -34,5 +34,11 @@
   "password": "Contraseña",
   "noHistoryMode": "Modo sin historial",
   "transientNotice": "El audio se procesa en vivo y no se almacena.",
-  "delete": "Eliminar"
+  "delete": "Eliminar",
+  "settingsTitle": "Servidor",
+  "serverUrl": "Dirección del servidor",
+  "serverUrlHelp": "Adónde envía traducciones esta app. Cámbiala solo para probar con tu propio servidor.",
+  "serverUrlInvalid": "Introduce una dirección http(s) completa.",
+  "resetDefault": "Restablecer",
+  "cancel": "Cancelar"
 }

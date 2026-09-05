@@ -3,14 +3,15 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/token_store.dart';
-import 'core/config/app_config.dart';
+import 'core/config/server_settings.dart';
 import 'core/network/api_client.dart';
 import 'features/translate/translate_repository.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
 
+/// Rebuilds whenever the server URL changes, so a tester can retarget the app.
 final apiClientProvider = Provider<ApiClient>(
-  (ref) => ApiClient(baseUrl: AppConfig.apiBaseUrl, tokens: ref.watch(tokenStoreProvider)),
+  (ref) => ApiClient(baseUrl: ref.watch(serverUrlProvider), tokens: ref.watch(tokenStoreProvider)),
 );
 
 final translateRepositoryProvider =

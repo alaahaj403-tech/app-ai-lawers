@@ -126,4 +126,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get delete => 'Delete';
+
+  @override
+  String get settingsTitle => 'Server';
+
+  @override
+  String get serverUrl => 'Server address';
+
+  @override
+  String get serverUrlHelp =>
+      'Where this app sends translations. Change only for testing against your own server.';
+
+  @override
+  String get serverUrlInvalid => 'Enter a full http(s) address.';
+
+  @override
+  String get resetDefault => 'Reset';
+
+  @override
+  String get cancel => 'Cancel';
 }

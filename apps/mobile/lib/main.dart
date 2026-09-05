@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/config/server_settings.dart';
 import 'features/translate/translate_screen.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
-  runApp(const ProviderScope(child: VoxeliApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final container = ProviderContainer();
+  await container.read(serverUrlProvider.notifier).restore();
+  runApp(UncontrolledProviderScope(container: container, child: const VoxeliApp()));
 }
 
 class VoxeliApp extends StatelessWidget {

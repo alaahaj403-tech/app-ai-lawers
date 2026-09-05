@@ -317,6 +317,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get delete;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get settingsTitle;
+
+  /// No description provided for @serverUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get serverUrl;
+
+  /// No description provided for @serverUrlHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Where this app sends translations. Change only for testing against your own server.'**
+  String get serverUrlHelp;
+
+  /// No description provided for @serverUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a full http(s) address.'**
+  String get serverUrlInvalid;
+
+  /// No description provided for @resetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get resetDefault;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
 }
 
 class _AppLocalizationsDelegate

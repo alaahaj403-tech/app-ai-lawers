@@ -127,4 +127,23 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get delete => 'Eliminar';
+
+  @override
+  String get settingsTitle => 'Servidor';
+
+  @override
+  String get serverUrl => 'Dirección del servidor';
+
+  @override
+  String get serverUrlHelp =>
+      'Adónde envía traducciones esta app. Cámbiala solo para probar con tu propio servidor.';
+
+  @override
+  String get serverUrlInvalid => 'Introduce una dirección http(s) completa.';
+
+  @override
+  String get resetDefault => 'Restablecer';
+
+  @override
+  String get cancel => 'Cancelar';
 }

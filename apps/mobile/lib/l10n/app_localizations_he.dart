@@ -126,4 +126,23 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get delete => 'מחיקה';
+
+  @override
+  String get settingsTitle => 'שרת';
+
+  @override
+  String get serverUrl => 'כתובת השרת';
+
+  @override
+  String get serverUrlHelp =>
+      'לאן האפליקציה שולחת תרגומים. לשינוי רק לצורך בדיקות מול שרת משלך.';
+
+  @override
+  String get serverUrlInvalid => 'הזינו כתובת http(s) מלאה.';
+
+  @override
+  String get resetDefault => 'איפוס';
+
+  @override
+  String get cancel => 'ביטול';
 }

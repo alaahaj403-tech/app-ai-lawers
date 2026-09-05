@@ -129,4 +129,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get delete => 'حذف';
+
+  @override
+  String get settingsTitle => 'الخادم';
+
+  @override
+  String get serverUrl => 'عنوان الخادم';
+
+  @override
+  String get serverUrlHelp =>
+      'إلى أين يرسل التطبيق الترجمات. غيّره فقط للاختبار مقابل خادمك الخاص.';
+
+  @override
+  String get serverUrlInvalid => 'أدخل عنوان http(s) كاملًا.';
+
+  @override
+  String get resetDefault => 'إعادة الضبط';
+
+  @override
+  String get cancel => 'إلغاء';
 }

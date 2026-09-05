@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/server_settings.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/languages.dart';
 import '../auth/auth_controller.dart';
@@ -42,6 +43,9 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
         _ => l10n.errorGeneric,
       };
 
+  Future<void> _showServerDialog(BuildContext context) =>
+      showDialog<void>(context: context, builder: (_) => const _ServerSettingsDialog());
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -54,6 +58,12 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
       appBar: AppBar(
         title: Text(l10n.appName, textDirection: TextDirection.ltr),
         actions: [
+          IconButton(
+            key: const Key('server_settings'),
+            tooltip: l10n.settingsTitle,
+            icon: const Icon(Icons.dns_outlined),
+            onPressed: () => _showServerDialog(context),
+          ),
           if (auth.status == AuthStatus.signedIn)
             IconButton(
               tooltip: l10n.logout,
@@ -350,6 +360,81 @@ class _Banner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
       child: Text(text, style: TextStyle(color: textColor)),
+    );
+  }
+}
+
+/// Lets a tester point this build at another server. Owns its controller so
+/// the field stays valid through the dialog's exit animation.
+class _ServerSettingsDialog extends ConsumerStatefulWidget {
+  const _ServerSettingsDialog();
+  @override
+  ConsumerState<_ServerSettingsDialog> createState() => _ServerSettingsDialogState();
+}
+
+class _ServerSettingsDialogState extends ConsumerState<_ServerSettingsDialog> {
+  late final TextEditingController _controller;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: ref.read(serverUrlProvider));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final ok = await ref.read(serverUrlProvider.notifier).set(_controller.text);
+    if (!mounted) return;
+    if (!ok) {
+      setState(() => _error = AppLocalizations.of(context).serverUrlInvalid);
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _reset() async {
+    await ref.read(serverUrlProvider.notifier).reset();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.settingsTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: const Key('server_url_field'),
+              controller: _controller,
+              keyboardType: TextInputType.url,
+              textDirection: TextDirection.ltr,
+              autocorrect: false,
+              decoration: InputDecoration(
+                labelText: l10n.serverUrl,
+                hintText: 'https://api.example.com',
+                border: const OutlineInputBorder(),
+                errorText: _error,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(l10n.serverUrlHelp, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _reset, child: Text(l10n.resetDefault)),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
+        FilledButton(key: const Key('server_url_save'), onPressed: _save, child: Text(l10n.save)),
+      ],
     );
   }
 }
