@@ -63,6 +63,12 @@ export const MESSAGE_KEYS = [
   'account.forgot',
   'account.forgotSent',
   'account.backHome',
+  'account.menu',
+  'account.export',
+  'account.delete',
+  'account.deleteConfirm',
+  'account.deleteWarning',
+  'account.cancel',
 ] as const;
 export type MessageKey = (typeof MESSAGE_KEYS)[number];
 
@@ -126,6 +132,12 @@ export const en: Catalog = {
   'account.forgot': 'Forgot password?',
   'account.forgotSent': 'If an account exists for that email, a reset link is on its way.',
   'account.backHome': 'Back to Voxeli',
+  'account.menu': 'Account',
+  'account.export': 'Download my data',
+  'account.delete': 'Delete account',
+  'account.deleteConfirm': 'Enter your password to permanently delete your account.',
+  'account.deleteWarning': 'This removes your history and settings. It cannot be undone.',
+  'account.cancel': 'Cancel',
 };
 
 export const he: Catalog = {
@@ -189,6 +201,12 @@ export const he: Catalog = {
   'account.forgot': 'שכחתם סיסמה?',
   'account.forgotSent': 'אם קיים חשבון לאימייל הזה, קישור לאיפוס בדרך.',
   'account.backHome': 'חזרה ל־Voxeli',
+  'account.menu': 'חשבון',
+  'account.export': 'הורדת הנתונים שלי',
+  'account.delete': 'מחיקת חשבון',
+  'account.deleteConfirm': 'הזינו את הסיסמה כדי למחוק את החשבון לצמיתות.',
+  'account.deleteWarning': 'פעולה זו מוחקת את ההיסטוריה וההגדרות ואינה ניתנת לביטול.',
+  'account.cancel': 'ביטול',
 };
 
 export const ar: Catalog = {
@@ -255,6 +273,12 @@ export const ar: Catalog = {
   'account.forgot': 'هل نسيت كلمة المرور؟',
   'account.forgotSent': 'إذا كان هناك حساب لهذا البريد، فرابط إعادة التعيين في طريقه إليك.',
   'account.backHome': 'العودة إلى Voxeli',
+  'account.menu': 'الحساب',
+  'account.export': 'تنزيل بياناتي',
+  'account.delete': 'حذف الحساب',
+  'account.deleteConfirm': 'أدخل كلمة المرور لحذف حسابك نهائيًا.',
+  'account.deleteWarning': 'سيؤدي هذا إلى إزالة السجل والإعدادات ولا يمكن التراجع عنه.',
+  'account.cancel': 'إلغاء',
 };
 
 export const de: Catalog = {
@@ -320,6 +344,13 @@ export const de: Catalog = {
   'account.forgotSent':
     'Falls ein Konto zu dieser E-Mail existiert, ist ein Link zum Zurücksetzen unterwegs.',
   'account.backHome': 'Zurück zu Voxeli',
+  'account.menu': 'Konto',
+  'account.export': 'Meine Daten herunterladen',
+  'account.delete': 'Konto löschen',
+  'account.deleteConfirm': 'Gib dein Passwort ein, um dein Konto dauerhaft zu löschen.',
+  'account.deleteWarning':
+    'Verlauf und Einstellungen werden entfernt. Das kann nicht rückgängig gemacht werden.',
+  'account.cancel': 'Abbrechen',
 };
 
 export const ru: Catalog = {
@@ -385,6 +416,12 @@ export const ru: Catalog = {
   'account.forgotSent':
     'Если аккаунт с таким адресом существует, ссылка для сброса уже отправлена.',
   'account.backHome': 'Вернуться в Voxeli',
+  'account.menu': 'Аккаунт',
+  'account.export': 'Скачать мои данные',
+  'account.delete': 'Удалить аккаунт',
+  'account.deleteConfirm': 'Введите пароль, чтобы навсегда удалить аккаунт.',
+  'account.deleteWarning': 'История и настройки будут удалены. Отменить это нельзя.',
+  'account.cancel': 'Отмена',
 };
 
 export const fr: Catalog = {
@@ -450,6 +487,13 @@ export const fr: Catalog = {
   'account.forgotSent':
     'Si un compte existe pour cet e-mail, un lien de réinitialisation est en route.',
   'account.backHome': 'Retour à Voxeli',
+  'account.menu': 'Compte',
+  'account.export': 'Télécharger mes données',
+  'account.delete': 'Supprimer le compte',
+  'account.deleteConfirm':
+    'Saisissez votre mot de passe pour supprimer définitivement votre compte.',
+  'account.deleteWarning': 'Cela supprime votre historique et vos réglages. C’est irréversible.',
+  'account.cancel': 'Annuler',
 };
 
 export const es: Catalog = {
@@ -515,6 +559,12 @@ export const es: Catalog = {
   'account.forgotSent':
     'Si existe una cuenta con ese correo, el enlace de restablecimiento va en camino.',
   'account.backHome': 'Volver a Voxeli',
+  'account.menu': 'Cuenta',
+  'account.export': 'Descargar mis datos',
+  'account.delete': 'Eliminar cuenta',
+  'account.deleteConfirm': 'Introduce tu contraseña para eliminar tu cuenta de forma permanente.',
+  'account.deleteWarning': 'Esto borra tu historial y ajustes. No se puede deshacer.',
+  'account.cancel': 'Cancelar',
 };
 
 export const CATALOGS: Record<UiLocale, Catalog> = { en, he, ar, de, ru, fr, es };

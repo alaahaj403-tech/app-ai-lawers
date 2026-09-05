@@ -18,6 +18,8 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [emailDraft, setEmailDraft] = useState('');
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api
@@ -56,7 +58,7 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
 
   if (user) {
     return (
-      <div className="flex items-center gap-2 text-sm">
+      <div className="relative flex items-center gap-2 text-sm">
         <span className="hidden max-w-40 truncate text-ink-muted sm:inline bidi-isolate">
           {user.email}
         </span>
@@ -66,14 +68,110 @@ export function AuthPanel({ locale }: { locale: UiLocale }) {
         <button
           type="button"
           className="rounded-md border border-line bg-panel px-3 py-1.5 hover:border-ink-muted"
+          aria-expanded={accountOpen}
           onClick={() => {
-            void api.logout().finally(() => {
-              setUser(null);
-            });
+            setAccountOpen((o) => !o);
           }}
         >
-          {t.t('auth.logout')}
+          {t.t('account.menu')}
         </button>
+        {accountOpen && (
+          <div className="absolute end-0 top-full z-10 mt-2 flex w-72 flex-col gap-2 rounded-xl border border-line bg-panel p-3 shadow-lg">
+            {/* Plain link: the BFF forwards the attachment and the browser saves it. */}
+            <a
+              href="/api/bff/v1/account/export"
+              className="rounded-md px-2 py-1.5 hover:bg-line"
+              download="voxeli-export.json"
+            >
+              {t.t('account.export')}
+            </a>
+            <button
+              type="button"
+              className="rounded-md px-2 py-1.5 text-start hover:bg-line"
+              onClick={() => {
+                void api.logout().finally(() => {
+                  setUser(null);
+                });
+              }}
+            >
+              {t.t('auth.logout')}
+            </button>
+            <hr className="border-line" />
+            {!deleting ? (
+              <button
+                type="button"
+                className="rounded-md px-2 py-1.5 text-start text-danger hover:bg-line"
+                onClick={() => {
+                  setDeleting(true);
+                }}
+              >
+                {t.t('account.delete')}
+              </button>
+            ) : (
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const field = new FormData(e.currentTarget).get('password');
+                  const password = typeof field === 'string' ? field : '';
+                  setBusy(true);
+                  setError(null);
+                  api
+                    .deleteAccount(password)
+                    .then(() => {
+                      setUser(null);
+                      setAccountOpen(false);
+                      setDeleting(false);
+                    })
+                    .catch((err: unknown) => {
+                      setError(err instanceof ApiError ? err.body.message : t.t('error.generic'));
+                    })
+                    .finally(() => {
+                      setBusy(false);
+                    });
+                }}
+              >
+                <p className="text-xs text-ink-muted">{t.t('account.deleteWarning')}</p>
+                <label className="flex flex-col gap-1 text-xs">
+                  {t.t('account.deleteConfirm')}
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    minLength={10}
+                    autoComplete="current-password"
+                    dir="ltr"
+                    className="rounded-md border border-line bg-paper px-2 py-1.5 text-sm"
+                  />
+                </label>
+                {error && (
+                  <p role="alert" className="text-xs text-danger">
+                    {error}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="rounded-md bg-danger px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                  >
+                    {t.t('account.delete')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-line px-3 py-1.5 text-xs"
+                    onClick={() => {
+                      setDeleting(false);
+                      setError(null);
+                    }}
+                  >
+                    {t.t('account.cancel')}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
       </div>
     );
   }
