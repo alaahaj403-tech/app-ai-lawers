@@ -1,0 +1,157 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import type React from 'react';
+import type { UserProfile } from '@voxeli/api-contracts';
+import type { UiLocale } from '@voxeli/domain';
+import { createTranslator } from '@voxeli/localization';
+import { ApiError, api } from '@/lib/api-client';
+
+type Mode = 'login' | 'register';
+
+export function AuthPanel({ locale }: { locale: UiLocale }) {
+  const t = createTranslator(locale);
+  const [user, setUser] = useState<UserProfile | null | undefined>(undefined);
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>('login');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .me()
+      .then(setUser)
+      .catch(() => {
+        setUser(null);
+      });
+  }, []);
+
+  async function submit(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const data = new FormData(e.currentTarget);
+    const emailField = data.get('email');
+    const passwordField = data.get('password');
+    const email = typeof emailField === 'string' ? emailField : '';
+    const password = typeof passwordField === 'string' ? passwordField : '';
+    try {
+      const res =
+        mode === 'login'
+          ? await api.login(email, password)
+          : await api.register(email, password, locale);
+      setUser(res.user);
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.body.message : t.t('error.generic'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (user === undefined)
+    return <div className="h-9 w-24 animate-pulse rounded-md bg-line" aria-hidden />;
+
+  if (user) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <span className="hidden max-w-40 truncate text-ink-muted sm:inline bidi-isolate">
+          {user.email}
+        </span>
+        <span className="rounded-full border border-line px-2 py-0.5 text-xs uppercase tracking-wide">
+          {user.plan}
+        </span>
+        <button
+          type="button"
+          className="rounded-md border border-line bg-panel px-3 py-1.5 hover:border-ink-muted"
+          onClick={() => {
+            void api.logout().finally(() => {
+              setUser(null);
+            });
+          }}
+        >
+          {t.t('auth.logout')}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+        onClick={() => {
+          setOpen((o) => !o);
+        }}
+      >
+        {t.t('auth.login')}
+      </button>
+      {open && (
+        <form
+          onSubmit={(e) => {
+            void submit(e);
+          }}
+          className="absolute end-0 z-10 mt-2 flex w-72 flex-col gap-3 rounded-xl border border-line bg-panel p-4 shadow-lg"
+          aria-label={mode === 'login' ? t.t('auth.login') : t.t('auth.register')}
+        >
+          <div className="flex gap-2 text-sm">
+            <button
+              type="button"
+              className={`flex-1 rounded-md px-2 py-1 ${mode === 'login' ? 'bg-line font-medium' : ''}`}
+              onClick={() => {
+                setMode('login');
+              }}
+            >
+              {t.t('auth.login')}
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-md px-2 py-1 ${mode === 'register' ? 'bg-line font-medium' : ''}`}
+              onClick={() => {
+                setMode('register');
+              }}
+            >
+              {t.t('auth.register')}
+            </button>
+          </div>
+          <label className="flex flex-col gap-1 text-sm">
+            {t.t('auth.email')}
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              dir="ltr"
+              className="rounded-md border border-line bg-paper px-2 py-1.5"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            {t.t('auth.password')}
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={10}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              dir="ltr"
+              className="rounded-md border border-line bg-paper px-2 py-1.5"
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
+          >
+            {mode === 'login' ? t.t('auth.login') : t.t('auth.register')}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}

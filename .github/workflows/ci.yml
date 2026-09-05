@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Lint · Typecheck · Test · Build (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: voxeli
+          POSTGRES_PASSWORD: voxeli
+          POSTGRES_DB: voxeli_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U voxeli"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://voxeli:voxeli@localhost:5432/voxeli_test
+      NEXT_TELEMETRY_DISABLED: 1
+      TURBO_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm -r --filter './packages/*' build
+      - run: pnpm exec eslint packages services apps/web/src
+      - run: pnpm -r typecheck
+      - run: pnpm -r --filter './packages/*' --filter @voxeli/api --filter @voxeli/web test
+      - run: pnpm -r --filter @voxeli/api --filter @voxeli/web build
+      - name: Migrations apply cleanly to an empty database
+        run: pnpm --filter @voxeli/api exec node --import tsx src/db/migrate.ts
+
+  security:
+    name: Dependency audit · secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high || echo "::warning::audit reported findings — review before release"
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mobile:
+    name: Flutter analyze · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults: { run: { working-directory: apps/mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.2
+          cache: true
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - run: flutter analyze
+      - run: flutter test
+      - name: Android debug build
+        run: flutter build apk --debug --dart-define=API_URL=https://api.example.invalid

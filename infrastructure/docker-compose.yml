@@ -1,0 +1,21 @@
+# Local dependencies only. Application services run via `pnpm dev`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: voxeli
+      POSTGRES_PASSWORD: voxeli
+      POSTGRES_DB: voxeli
+    ports: ['5432:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U voxeli']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    ports: ['6379:6379']
+volumes:
+  pgdata:
