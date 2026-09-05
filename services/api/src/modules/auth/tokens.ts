@@ -60,6 +60,46 @@ export class TokenService {
     return { sub: payload.sub, role, plan, sid: payload.sid };
   }
 
+  /**
+   * Short-lived ticket for the realtime relay. Browsers cannot set headers on a
+   * WebSocket handshake, so the connect credential travels in the query string;
+   * it is therefore scoped to one session, one user, and ~60 seconds.
+   */
+  async signRelayTicket(
+    claims: { sub: string; sid: string; plan: AccessTokenClaims['plan'] },
+    ttlSeconds = 60,
+  ): Promise<{ ticket: string; expiresAt: Date }> {
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    const ticket = await new SignJWT({ sid: claims.sid, plan: claims.plan, typ: 'relay' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(claims.sub)
+      .setIssuer(this.env.JWT_ISSUER)
+      .setAudience('voxeli-relay')
+      .setIssuedAt()
+      .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
+      .sign(this.current);
+    return { ticket, expiresAt };
+  }
+
+  async verifyRelayTicket(
+    ticket: string,
+  ): Promise<{ sub: string; sid: string; plan: AccessTokenClaims['plan'] }> {
+    const { payload } = await jwtVerify(ticket, this.current, {
+      issuer: this.env.JWT_ISSUER,
+      audience: 'voxeli-relay',
+      algorithms: ['HS256'],
+    });
+    if (
+      typeof payload.sub !== 'string' ||
+      typeof payload.sid !== 'string' ||
+      payload.typ !== 'relay'
+    ) {
+      throw new Error('bad relay ticket');
+    }
+    const plan = payload.plan === 'pro' || payload.plan === 'business' ? payload.plan : 'free';
+    return { sub: payload.sub, sid: payload.sid, plan };
+  }
+
   generateRefreshToken(): string {
     return randomBytes(48).toString('base64url');
   }

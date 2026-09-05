@@ -24,7 +24,9 @@ describe('realtime sessions', () => {
     expect(r1.json().tier).toBe('tier2_streaming');
     expect(r1.json().degraded).toBe(true);
     expect(r1.json().degradedReason).toBe('plan_does_not_include_tier1');
-    expect(r1.json().clientSecret.value).toMatch(/^ek_/);
+    // Tier 2 runs through our relay, so no provider credential is issued.
+    expect(r1.json().clientSecret).toBeNull();
+    expect(r1.json().relay.ticket).toBeTruthy();
 
     const pro = await registerUser(built, 'pro@example.com');
     await setPlan(built, pro.user.id, 'pro');
@@ -47,6 +49,36 @@ describe('realtime sessions', () => {
     expect(r2.statusCode).toBe(201);
     expect(r2.json().tier).toBe('tier1_s2s');
     expect(r2.json().degraded).toBe(false);
+    // Tier 1 connects the device directly, so it gets a capped provider credential.
+    expect(r2.json().clientSecret.value).toMatch(/^ek_/);
+    expect(r2.json().relay).toBeNull();
+  });
+
+  it('caps the tier-1 provider credential lifetime by the remaining minutes', async () => {
+    const pro = await registerUser(built, 'cap@example.com');
+    await setPlan(built, pro.user.id, 'pro');
+    // 299 of 300 minutes spent: one minute of budget remains.
+    await built.db.execute(`insert into usage_quotas (user_id, dimension, period, used)
+      values ('${pro.user.id}', 'realtime_minutes', to_char(now() at time zone 'utc', 'YYYY-MM'), 299)`);
+    const login = await built.app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'cap@example.com', password: 'correct-horse-battery-staple' },
+    });
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/v1/realtime/sessions',
+      headers: auth(login.json().tokens.accessToken as string),
+      payload: { kind: 'face_to_face', myLanguage: 'he', targetLanguage: 'en' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().tier).toBe('tier1_s2s');
+    const ttlSeconds = Math.round(
+      (new Date(res.json().clientSecret.expiresAt as string).getTime() - Date.now()) / 1000,
+    );
+    // 60 s of remaining budget, not the 300 s default.
+    expect(ttlSeconds).toBeGreaterThan(40);
+    expect(ttlSeconds).toBeLessThanOrEqual(60);
   });
 
   it('rejects interpreter calls without a remote language and recording while the flag is off', async () => {

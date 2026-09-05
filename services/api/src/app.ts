@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import websocket from '@fastify/websocket';
 import type { ServerEnv } from '@voxeli/config';
 import { createDb } from './db/client.js';
 import type { Db } from './db/client.js';
@@ -18,6 +19,7 @@ import { FlagService } from './modules/flags/service.js';
 import { adminFlagRoutes, flagRoutes } from './modules/flags/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { realtimeRoutes } from './modules/realtime/routes.js';
+import { relayRoutes } from './modules/realtime/stream-routes.js';
 import { speechRoutes } from './modules/speech/routes.js';
 import { TranslationRepository } from './modules/translation/repository.js';
 import { translationRoutes } from './modules/translation/routes.js';
@@ -98,12 +100,18 @@ export async function buildApp(
     keyGenerator: (req) => req.user?.sub ?? req.ip,
     ...(env.REDIS_URL ? { redis: await createRedis(env.REDIS_URL) } : {}),
   });
+  // 64 KiB frames: ~1.3 s of PCM16 at 24 kHz, comfortably above any client chunk.
+  await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
   await app.register(requestContextPlugin);
   await app.register(authPlugin, { tokens });
   registerErrorHandler(app);
 
   await app.register(healthRoutes, { db, router: ai.router, providerMode: ai.providerMode });
-  await app.register(authRoutes, { prefix: '/v1/auth', auth });
+  await app.register(authRoutes, {
+    prefix: '/v1/auth',
+    auth,
+    authRateLimitMax: env.AUTH_RATE_LIMIT_MAX,
+  });
   await app.register(translationRoutes, {
     prefix: '/v1',
     translation: ai.translation,
@@ -112,12 +120,23 @@ export async function buildApp(
     bindCorrelation,
   });
   await app.register(speechRoutes, { prefix: '/v1', router: ai.router, quota, bindCorrelation });
+  await app.register(relayRoutes, {
+    prefix: '/v1/realtime',
+    db,
+    router: ai.router,
+    translation: ai.translation,
+    transcription: ai.transcription,
+    quota,
+    tokens,
+    modelConfig: ai.modelConfig,
+  });
   await app.register(realtimeRoutes, {
     prefix: '/v1/realtime',
     db,
     router: ai.router,
     quota,
     flags,
+    tokens,
   });
   await app.register(flagRoutes, { prefix: '/v1', flags });
   await app.register(adminFlagRoutes, { prefix: '/v1/admin', flags, audit });

@@ -12,6 +12,7 @@ import { DEFAULT_ENTITLEMENTS, failures } from '@voxeli/domain';
 import type { Db } from '../../db/client.js';
 import { realtimeSessions } from '../../db/schema.js';
 import type { FlagService } from '../flags/service.js';
+import type { TokenService } from '../auth/tokens.js';
 import type { QuotaService } from '../usage/quota.js';
 import { currentUser } from '../../plugins/auth.js';
 
@@ -20,15 +21,21 @@ export interface RealtimeRoutesDeps {
   router: AIModelRouter;
   quota: QuotaService;
   flags: FlagService;
+  tokens: TokenService;
 }
 
 const CLIENT_SECRET_TTL_SECONDS = 300;
+const RELAY_TICKET_TTL_SECONDS = 60;
 
 /**
- * Realtime bootstrap. The client receives an ephemeral provider credential and
- * the endpoint for the selected tier. Tier selection is server-side and
- * explainable (`degradedReason`). Minutes are accounted from the client's
- * end-of-session report today (see docs/TECH_DEBT.md for the server-media path).
+ * Realtime bootstrap. Tier selection is server-side and explainable
+ * (`degradedReason`).
+ *
+ * Tier 2 returns a ticket for our own relay: the media path runs through the
+ * server, so minutes are metered there rather than trusted from the client.
+ * Tier 1 still connects the device straight to the provider for latency, but
+ * its ephemeral credential is capped by the account's remaining minutes so an
+ * exhausted account cannot keep a session alive.
  */
 export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app, deps) => {
   app.addHook('preHandler', app.requireUser);
@@ -55,21 +62,6 @@ export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app
       tier1Allowed,
     });
 
-    const secret = await selection.provider.createClientSecret(
-      {
-        tier: selection.tier === 'tier1_s2s' ? 'tier1_s2s' : 'tier2_streaming',
-        model: selection.ref.model,
-        transport: body.transport,
-        targetLanguage: body.targetLanguage,
-        languageHints:
-          body.myLanguage === 'auto'
-            ? []
-            : [body.myLanguage, ...(body.remoteLanguage ? [body.remoteLanguage] : [])],
-        expiresInSeconds: CLIENT_SECRET_TTL_SECONDS,
-      },
-      { correlationId: req.correlationId, timeoutMs: 10_000 },
-    );
-
     const [row] = await deps.db
       .insert(realtimeSessions)
       .values({
@@ -86,11 +78,48 @@ export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app
       .returning({ id: realtimeSessions.id });
     if (!row) throw failures.internal('Session insert returned no row');
 
+    let clientSecret: RealtimeSessionResponse['clientSecret'] = null;
+    let endpoint: RealtimeSessionResponse['endpoint'] = null;
+    let relay: RealtimeSessionResponse['relay'] = null;
+
+    if (selection.tier === 'tier1_s2s') {
+      // A device-held credential must not outlive the minutes it can spend.
+      const remainingSeconds =
+        q.limit === null ? CLIENT_SECRET_TTL_SECONDS : (q.limit - q.used) * 60;
+      const secret = await selection.provider.createClientSecret(
+        {
+          tier: 'tier1_s2s',
+          model: selection.ref.model,
+          transport: body.transport,
+          targetLanguage: body.targetLanguage,
+          languageHints:
+            body.myLanguage === 'auto'
+              ? []
+              : [body.myLanguage, ...(body.remoteLanguage ? [body.remoteLanguage] : [])],
+          expiresInSeconds: Math.max(10, Math.min(CLIENT_SECRET_TTL_SECONDS, remainingSeconds)),
+        },
+        { correlationId: req.correlationId, timeoutMs: 10_000 },
+      );
+      clientSecret = { value: secret.value, expiresAt: secret.expiresAt.toISOString() };
+      endpoint = secret.endpoint;
+    } else {
+      const ticket = await deps.tokens.signRelayTicket(
+        { sub: user.sub, sid: row.id, plan: user.plan },
+        RELAY_TICKET_TTL_SECONDS,
+      );
+      relay = {
+        path: '/v1/realtime/stream',
+        ticket: ticket.ticket,
+        expiresAt: ticket.expiresAt.toISOString(),
+      };
+    }
+
     const response: RealtimeSessionResponse = {
       sessionId: row.id,
       tier: selection.tier,
-      clientSecret: { value: secret.value, expiresAt: secret.expiresAt.toISOString() },
-      endpoint: secret.endpoint,
+      clientSecret,
+      endpoint,
+      relay,
       degraded: selection.degradedReason !== undefined,
       ...(selection.degradedReason ? { degradedReason: selection.degradedReason } : {}),
       quota: { dimension: 'realtime_minutes', used: q.used, limit: q.limit },

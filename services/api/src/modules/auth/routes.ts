@@ -8,8 +8,13 @@ import {
 import type { AuthService } from './service.js';
 import { currentUser } from '../../plugins/auth.js';
 
-export const authRoutes: FastifyPluginAsync<{ auth: AuthService }> = async (app, { auth }) => {
-  const strict = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
+export const authRoutes: FastifyPluginAsync<{
+  auth: AuthService;
+  authRateLimitMax: number;
+}> = async (app, { auth, authRateLimitMax }) => {
+  // Credential endpoints get a much tighter budget than the global limit:
+  // this is the surface credential-stuffing attacks aim at.
+  const strict = { config: { rateLimit: { max: authRateLimitMax, timeWindow: '1 minute' } } };
   const ctx = (req: { correlationId: string; ip: string; headers: Record<string, unknown> }) => ({
     correlationId: req.correlationId,
     ip: req.ip,

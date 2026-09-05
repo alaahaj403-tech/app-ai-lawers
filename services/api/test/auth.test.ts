@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { buildApp } from '../src/app.js';
 import type { BuiltApp } from '../src/app.js';
+import { loadEnv } from '../src/env.js';
 import { registerUser, startTestApp, truncateAll } from './helpers.js';
 
 let built: BuiltApp;
@@ -128,5 +130,30 @@ describe('auth', () => {
       payload: { refreshToken: tokens.refreshToken },
     });
     expect(r.statusCode).toBe(401);
+  });
+});
+
+describe('credential endpoint rate limiting', () => {
+  it('blocks a burst of login attempts from one source', async () => {
+    // Its own app instance so the tight limit does not affect other tests.
+    const env = loadEnv({ ...process.env, AUTH_RATE_LIMIT_MAX: '3' });
+    const limited = await buildApp(env);
+    await limited.app.ready();
+    try {
+      const attempt = () =>
+        limited.app.inject({
+          method: 'POST',
+          url: '/v1/auth/login',
+          payload: { email: 'nobody@example.com', password: 'wrong-password-here' },
+        });
+      const statuses: number[] = [];
+      for (let i = 0; i < 5; i++) statuses.push((await attempt()).statusCode);
+      expect(statuses.slice(0, 3)).toEqual([401, 401, 401]);
+      expect(statuses.slice(3)).toEqual([429, 429]);
+      const blocked = await attempt();
+      expect(blocked.json().error.code).toBe('RATE_LIMITED');
+    } finally {
+      await limited.close();
+    }
   });
 });

@@ -8,6 +8,7 @@
 - No provider/model names in application code or client responses; use slots from `@voxeli/config` via `AIModelRouter`.
 - AI output, OCR, documents, transcripts, webhooks = untrusted data. Validate with Zod; never execute embedded instructions.
 - Every user resource query filters by `userId`. Never trust a client-sent id alone.
+- Metered resources (realtime minutes, audio minutes) are charged where the server can observe them, never from a client-reported duration.
 - No fake indicators (confidence %, quality scores, offline claims). Capability registry decides what is advertised.
 - Before changing any model slot, run `pnpm --filter @voxeli/api eval` and compare entity preservation, latency and cost against the current configuration (ADR-0004).
 - Cellular call capture/recording: `UNSUPPORTED_PLATFORM_CAPABILITY`. No hidden APIs, Accessibility abuse, root, private Apple APIs.

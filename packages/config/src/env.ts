@@ -28,6 +28,8 @@ export const serverEnvSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
   RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(120),
+  /** Tighter budget for credential endpoints (login/register/refresh). */
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60_000),
 });
 

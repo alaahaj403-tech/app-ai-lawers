@@ -12,6 +12,9 @@ export default defineConfig({
       JWT_SECRET: 'test-secret-test-secret-test-secret-test-secret',
       AI_PROVIDER: 'mock',
       LOG_LEVEL: 'silent',
+      // The auth limiter is exercised by a dedicated test with its own app
+      // instance; a shared low limit would make every other test flaky.
+      AUTH_RATE_LIMIT_MAX: '500',
     },
   },
 });

@@ -1,11 +1,19 @@
+import WebSocket from 'ws';
 import {
   AIModelRouter,
+  MockLiveTranscriptionProvider,
   MockRealtimeProvider,
+  OpenAILiveTranscriptionProvider,
   MockTextToSpeechProvider,
   MockTranslationProvider,
   createOpenAIProviders,
 } from '@voxeli/ai-core';
-import type { RouterProviders, UsageRecorder } from '@voxeli/ai-core';
+import type {
+  LiveTranscriptionProvider,
+  RouterProviders,
+  SocketFactory,
+  UsageRecorder,
+} from '@voxeli/ai-core';
 import { resolveModelConfig } from '@voxeli/config';
 import type { ModelConfig, ServerEnv } from '@voxeli/config';
 import { TranslationService } from '@voxeli/translation-core';
@@ -13,6 +21,8 @@ import { TranslationService } from '@voxeli/translation-core';
 export interface AIContainer {
   router: AIModelRouter;
   translation: TranslationService;
+  /** Server-held live transcription for the Tier-2 relay. */
+  transcription: LiveTranscriptionProvider;
   providerMode: 'openai' | 'mock';
   modelConfig: ModelConfig;
 }
@@ -46,11 +56,49 @@ export function createAIContainer(
     };
   }
 
+  const transcription: LiveTranscriptionProvider =
+    useOpenAI && env.OPENAI_API_KEY
+      ? new OpenAILiveTranscriptionProvider(env.OPENAI_API_KEY, wsSocketFactory)
+      : new MockLiveTranscriptionProvider();
+
   const router = new AIModelRouter(modelConfig, providers, usage);
   return {
     router,
+    transcription,
     translation: new TranslationService(router),
     providerMode: useOpenAI && env.OPENAI_API_KEY ? 'openai' : 'mock',
     modelConfig,
   };
 }
+
+/**
+ * `ws`-backed socket factory. Node's global WebSocket cannot set request
+ * headers, which provider authentication requires.
+ */
+const wsSocketFactory: SocketFactory = (url, headers) => {
+  const socket = new WebSocket(url, { headers });
+  return {
+    send: (data) => {
+      socket.send(data);
+    },
+    close: (code, reason) => {
+      socket.close(code, reason);
+    },
+    onOpen: (cb) => {
+      socket.on('open', cb);
+    },
+    onMessage: (cb) => {
+      socket.on('message', (data: Buffer) => {
+        cb(data.toString('utf8'));
+      });
+    },
+    onError: (cb) => {
+      socket.on('error', cb);
+    },
+    onClose: (cb) => {
+      socket.on('close', (code: number, reason: Buffer) => {
+        cb(code, reason.toString('utf8'));
+      });
+    },
+  };
+};
