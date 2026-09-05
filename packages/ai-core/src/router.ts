@@ -4,12 +4,14 @@ import type { Plan } from '@voxeli/domain';
 import { estimateTextCost } from './cost.js';
 import { ProviderHealth } from './health.js';
 import type {
+  AIUsageRecord,
   CallContext,
   ProviderId,
   ProviderTranslationInput,
   ProviderTranslationOutput,
   RealtimeTier,
   RealtimeTranslationProvider,
+  TextToSpeechProvider,
   TranslationProvider,
   UsageRecorder,
 } from './types.js';
@@ -17,6 +19,7 @@ import type {
 export interface RouterProviders {
   readonly translation: Partial<Record<ProviderId, TranslationProvider>>;
   readonly realtime: Partial<Record<ProviderId, RealtimeTranslationProvider>>;
+  readonly speech?: Partial<Record<ProviderId, TextToSpeechProvider>>;
 }
 
 export interface TranslationRoutingRequest {
@@ -25,6 +28,21 @@ export interface TranslationRoutingRequest {
   /** Caller's quality preference. Plan may cap it. */
   readonly quality: 'fast' | 'default' | 'high';
   readonly feature: string;
+}
+
+export interface SpeechRoutingRequest {
+  readonly text: string;
+  readonly language: string;
+  readonly voice?: string;
+  readonly format: 'mp3' | 'wav' | 'pcm' | 'opus';
+  readonly feature: string;
+}
+
+export interface RoutedSpeech {
+  readonly audio: Uint8Array;
+  readonly mimeType: string;
+  readonly slot: ModelSlot;
+  readonly latencyMs: number;
 }
 
 export interface RoutedTranslation {
@@ -179,6 +197,75 @@ export class AIModelRouter {
     throw failures.modelUnsupported('No realtime tier available for this language');
   }
 
+  /**
+   * Text-to-speech. One slot, no quality tiers: the failure mode users care
+   * about is silence, so a provider error surfaces immediately rather than
+   * being retried against a model that would sound different.
+   */
+  async synthesize(req: SpeechRoutingRequest, ctx: CallContext): Promise<RoutedSpeech> {
+    const slot: ModelSlot = 'speech.synthesis';
+    const ref = this.config[slot];
+    const provider = this.providers.speech?.[ref.provider];
+    if (!provider) throw failures.providerUnavailable('Speech synthesis is not configured');
+    if (!this.health.isAvailable(ref.provider, ref.model)) {
+      throw failures.providerUnavailable('Speech synthesis is temporarily unavailable');
+    }
+
+    const started = Date.now();
+    try {
+      const out = await withTimeout(
+        provider.synthesize(
+          ref.model,
+          {
+            text: req.text,
+            language: req.language,
+            ...(req.voice ? { voice: req.voice } : {}),
+            format: req.format,
+          },
+          ctx,
+        ),
+        ctx.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        ctx.signal,
+      );
+      const latencyMs = Date.now() - started;
+      this.health.recordSuccess(ref.provider, ref.model);
+      await this.record(
+        ctx,
+        req.feature,
+        slot,
+        ref,
+        req.text.length,
+        out.audio.byteLength,
+        latencyMs,
+        true,
+        0,
+        undefined,
+        undefined,
+        'characters',
+      );
+      return { audio: out.audio, mimeType: out.mimeType, slot, latencyMs };
+    } catch (error) {
+      const latencyMs = Date.now() - started;
+      const failure = AppFailure.from(error, 'PROVIDER_UNAVAILABLE');
+      this.health.recordFailure(ref.provider, ref.model);
+      await this.record(
+        ctx,
+        req.feature,
+        slot,
+        ref,
+        req.text.length,
+        0,
+        latencyMs,
+        false,
+        0,
+        undefined,
+        failure.code,
+        'characters',
+      );
+      throw failure;
+    }
+  }
+
   healthSnapshot() {
     return this.health.snapshot();
   }
@@ -195,8 +282,9 @@ export class AIModelRouter {
     retries: number,
     fallbackFrom: string | undefined,
     errorCode?: string,
+    unit: AIUsageRecord['unit'] = 'tokens',
   ) {
-    const cost = estimateTextCost(ref, inputUnits, outputUnits);
+    const cost = unit === 'tokens' ? estimateTextCost(ref, inputUnits, outputUnits) : { usd: null };
     await this.usage.record({
       correlationId: ctx.correlationId,
       feature,
@@ -205,7 +293,7 @@ export class AIModelRouter {
       model: ref.model,
       inputUnits,
       outputUnits,
-      unit: 'tokens',
+      unit,
       latencyMs,
       success,
       retries,

@@ -9,6 +9,7 @@
 - AI output, OCR, documents, transcripts, webhooks = untrusted data. Validate with Zod; never execute embedded instructions.
 - Every user resource query filters by `userId`. Never trust a client-sent id alone.
 - No fake indicators (confidence %, quality scores, offline claims). Capability registry decides what is advertised.
+- Before changing any model slot, run `pnpm --filter @voxeli/api eval` and compare entity preservation, latency and cost against the current configuration (ADR-0004).
 - Cellular call capture/recording: `UNSUPPORTED_PLATFORM_CAPABILITY`. No hidden APIs, Accessibility abuse, root, private Apple APIs.
 - Secrets only via env (`.env.example` is the template). Mock AI provider is refused in production.
 - Hebrew/Arabic are first-class: set `lang`/`dir`, isolate technical tokens, never reverse URLs/numbers/IDs.
@@ -21,6 +22,7 @@ pnpm -r --filter './packages/*' build          # build shared packages first
 pnpm test | pnpm lint | pnpm typecheck | pnpm build
 pnpm --filter @voxeli/api dev                  # needs services/api/.env (copy .env.example)
 pnpm db:generate | pnpm db:migrate | pnpm db:seed
+pnpm --filter @voxeli/api eval                 # AI regression eval; add --json=out.json --quality=fast
 pnpm --filter @voxeli/web dev                  # http://localhost:3000, API_URL env → BFF
 cd apps/mobile && flutter gen-l10n && flutter analyze && flutter test
 docker compose -f infrastructure/docker-compose.yml up -d   # local Postgres + Redis

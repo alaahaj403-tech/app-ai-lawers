@@ -1,6 +1,6 @@
 # Engineering Status
 
-_Last updated: 2026-09-05 · Branch `claude/voxeli-branding-strategy-rf6fpg`_
+_Last updated: 2026-09-06 · Branch `claude/voxeli-branding-strategy-rf6fpg`_
 
 ## Current milestone
 
@@ -19,6 +19,8 @@ _Last updated: 2026-09-05 · Branch `claude/voxeli-branding-strategy-rf6fpg`_
 | `@voxeli/realtime-core` — streaming pipeline, incremental segmenter (Latin/Hebrew/Arabic/CJK), echo guard, barge-in, immutable ledger with reconnect dedupe, latency meter                                                                                                                                                                                                     | 15 tests                                                                                                                                                            |
 | `@voxeli/localization` — 7 locales, plural rules (he two/many, ar zero..many, ru few/many), bidi isolation, locale formatting                                                                                                                                                                                                                                                  | 8 tests                                                                                                                                                             |
 | `services/api` — Fastify 5, Drizzle migrations (10 tables), argon2id auth with rotating refresh tokens, per-route + per-query authorization, atomic quotas with refund, idempotent translate, history CRUD, realtime session bootstrap with tier selection + ephemeral secrets, feature flags (admin, audited), rate limiting, Helmet/CORS, typed error envelope, health/ready | 19 integration tests on PostgreSQL 16 (auth, IDOR/BOLA, quota, idempotency, pagination, realtime tiers, flags kill-switch, audit); migrations applied to a fresh DB |
+| Speech synthesis — `POST /v1/speech` (server TTS slot, audio-minute quota with refund, no storage), web Listen button now uses it through the BFF's binary pass-through                                                                                                                                                                                                        | 3 API integration tests, 3 router tests, 2 BFF tests                                                                                                                |
+| AI evaluation harness — `pnpm --filter @voxeli/api eval` runs the regression corpus through the real routing path and reports entity preservation, repair passes, degraded routing, latency p50/p95, tokens and estimated cost                                                                                                                                                 | Executed against the mock provider: 10/10 cases, report rendered; **not yet run against OpenAI**                                                                    |
 | `apps/web` — Next.js 16 App Router translator (RTL by locale, 7 UI languages, history, no-history mode, integrity + degraded banners), BFF with httpOnly cookies, allow-list, same-origin check, security headers                                                                                                                                                              | 4 tests, `tsc` clean, `next build` succeeds                                                                                                                         |
 | `apps/mobile` — Flutter 3.47 translator screen (Riverpod 3, Dio client with single-flight refresh, Keychain/Keystore tokens, 7 ARB locales, RTL), auth sheet                                                                                                                                                                                                                   | `flutter analyze` 0 issues, 6 tests (models, RTL rendering, error state, empty input)                                                                               |
 
@@ -48,8 +50,8 @@ ADR-0001 monorepo/toolchain · ADR-0002 backend & DB · ADR-0003 auth & sessions
 ## Validation results (this environment)
 
 ```
-packages: 67 tests passed (7 packages)      services/api: 19 passed (PostgreSQL 16)
-apps/web: 4 passed · next build ✓           apps/mobile: flutter analyze ✓ · 6 tests passed
+packages: 70 tests passed (7 packages)      services/api: 22 passed (PostgreSQL 16)
+apps/web: 6 passed · next build ✓           apps/mobile: flutter analyze ✓ · 6 tests passed
 eslint: 0 problems · prettier: clean · tsc: clean · drizzle migrate + seed on empty DB ✓
 ```
 
@@ -61,8 +63,8 @@ Fixed during build: provider names leaking into client responses (test now asser
 
 ## Next autonomous actions
 
-1. Runtime-verify the OpenAI path with a key: run `REGRESSION_CASES` through `TranslationService`, record latency/cost in `ai_usage`, tune `translation.fast` vs `default`.
-2. Streaming TTS endpoint (`/v1/speech`) and server-side realtime relay for Tier 2 (fixes TECH_DEBT #1) + Tier-1 language probe (TECH_DEBT #3).
+1. Runtime-verify the OpenAI path with a key — now a single command: `pnpm --filter @voxeli/api eval --json=eval.json`. Then tune `translation.fast` vs `default` on the measured numbers and fill the price table (TECH_DEBT #4).
+2. Server-side realtime relay for Tier 2 (fixes TECH_DEBT #1) + Tier-1 language probe (TECH_DEBT #3).
 3. Flutter Talk screen: `MicrophoneAudioSource`, WebRTC transport to the realtime endpoint, captions from `SessionLedger`, mic/recording indicators.
 4. Email verification + password reset; admin console skeleton (flags, models, usage, costs).
 5. Camera translate (on-device OCR first) — Milestone 2.

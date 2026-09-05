@@ -24,7 +24,9 @@ export function Translator({ locale }: { locale: UiLocale }) {
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<TranslationHistoryItem[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const loadHistory = useCallback(() => {
     api
@@ -71,6 +73,34 @@ export function Translator({ locale }: { locale: UiLocale }) {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Server-side synthesis: one voice pipeline across web and mobile. */
+  async function playTranslation() {
+    if (!result || speaking) return;
+    setSpeaking(true);
+    setError(null);
+    try {
+      const blob = await api.speech(result.result.translatedText, target);
+      audioRef.current?.pause();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(url);
+      });
+      await audio.play();
+    } catch (err) {
+      setError({
+        code: err instanceof ApiError ? err.body.code : 'INTERNAL',
+        message:
+          err instanceof ApiError && err.body.code === 'QUOTA_EXCEEDED'
+            ? t.t('error.quota')
+            : t.t('error.provider'),
+      });
+    } finally {
+      setSpeaking(false);
     }
   }
 
@@ -214,20 +244,16 @@ export function Translator({ locale }: { locale: UiLocale }) {
             >
               {copied ? '✓' : t.t('translate.copy')}
             </button>
-            {'speechSynthesis' in globalThis && (
-              <button
-                type="button"
-                className="rounded-md border border-line px-3 py-1 hover:border-ink-muted"
-                onClick={() => {
-                  const u = new SpeechSynthesisUtterance(translated);
-                  u.lang = target;
-                  speechSynthesis.cancel();
-                  speechSynthesis.speak(u);
-                }}
-              >
-                {t.t('translate.listen')}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={speaking}
+              className="rounded-md border border-line px-3 py-1 hover:border-ink-muted disabled:opacity-60"
+              onClick={() => {
+                void playTranslation();
+              }}
+            >
+              {speaking ? t.t('state.speaking') : t.t('translate.listen')}
+            </button>
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button
                 type="button"

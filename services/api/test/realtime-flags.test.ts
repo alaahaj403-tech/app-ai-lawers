@@ -182,3 +182,68 @@ describe('platform', () => {
     expect(nf.json().error.code).toBe('NOT_FOUND');
   });
 });
+
+describe('speech synthesis', () => {
+  it('returns audio bytes, charges audio minutes, and records usage', async () => {
+    const u = await registerUser(built, 'tts@example.com');
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/v1/speech',
+      headers: auth(u.tokens.accessToken),
+      payload: { text: 'שלום, מה שלומך היום?', language: 'he', format: 'wav' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toBe('audio/wav');
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(res.rawPayload.byteLength).toBeGreaterThan(44);
+    expect(res.rawPayload.subarray(0, 4).toString('ascii')).toBe('RIFF');
+
+    const usage = await built.db.execute(
+      `select feature, unit, success from ai_usage where feature = 'speech.synthesis'`,
+    );
+    expect(usage[0]).toMatchObject({ unit: 'characters', success: true });
+
+    const quota = await built.db.execute(
+      `select used from usage_quotas where user_id = '${u.user.id}' and dimension = 'audio_minutes'`,
+    );
+    expect(quota[0]).toMatchObject({ used: 1 });
+  });
+
+  it('validates language and text length, and requires authentication', async () => {
+    const u = await registerUser(built, 'tts2@example.com');
+    const badLang = await built.app.inject({
+      method: 'POST',
+      url: '/v1/speech',
+      headers: auth(u.tokens.accessToken),
+      payload: { text: 'hello', language: 'xx' },
+    });
+    expect(badLang.statusCode).toBe(400);
+    const tooLong = await built.app.inject({
+      method: 'POST',
+      url: '/v1/speech',
+      headers: auth(u.tokens.accessToken),
+      payload: { text: 'a'.repeat(5000), language: 'en' },
+    });
+    expect(tooLong.statusCode).toBe(400);
+    const anon = await built.app.inject({
+      method: 'POST',
+      url: '/v1/speech',
+      payload: { text: 'hi', language: 'en' },
+    });
+    expect(anon.statusCode).toBe(401);
+  });
+
+  it('refuses synthesis once the audio-minute quota is exhausted', async () => {
+    const u = await registerUser(built, 'tts3@example.com');
+    await built.db.execute(`insert into usage_quotas (user_id, dimension, period, used)
+      values ('${u.user.id}', 'audio_minutes', to_char(now() at time zone 'utc', 'YYYY-MM'), 20)`);
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/v1/speech',
+      headers: auth(u.tokens.accessToken),
+      payload: { text: 'hello there', language: 'en' },
+    });
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error.code).toBe('QUOTA_EXCEEDED');
+  });
+});

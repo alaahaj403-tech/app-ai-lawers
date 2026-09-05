@@ -13,6 +13,7 @@ const ALLOWED: readonly { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^v1\/auth\/(register|login|refresh|logout)$/ },
   { method: 'GET', pattern: /^v1\/auth\/me$/ },
   { method: 'POST', pattern: /^v1\/translate$/ },
+  { method: 'POST', pattern: /^v1\/speech$/ },
   { method: 'GET', pattern: /^v1\/translations$/ },
   { method: 'PATCH', pattern: /^v1\/translations\/[0-9a-f-]{36}$/ },
   { method: 'DELETE', pattern: /^v1\/translations(\/[0-9a-f-]{36})?$/ },
@@ -48,6 +49,18 @@ export function originAllowed(
   } catch {
     return false;
   }
+}
+
+/**
+ * JSON bodies are read as text so auth responses can have their tokens
+ * stripped; everything else (audio, files) must pass through as bytes.
+ */
+export function isTextualContentType(contentType: string | null): boolean {
+  if (!contentType) return true;
+  const type = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  return (
+    type === '' || type.startsWith('text/') || type === 'application/json' || type.endsWith('+json')
+  );
 }
 
 export interface CookieSpec {

@@ -12,7 +12,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file=.env --import tsx src/db/migrate.ts",
-    "db:seed": "node --env-file=.env --import tsx src/db/seed.ts"
+    "db:seed": "node --env-file=.env --import tsx src/db/seed.ts",
+    "eval": "node --env-file-if-exists=.env --import tsx src/eval/translation-eval.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

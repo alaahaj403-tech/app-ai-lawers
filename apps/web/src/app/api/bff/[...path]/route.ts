@@ -7,6 +7,7 @@ import {
   authCookiesFrom,
   isAllowed,
   isAuthPath,
+  isTextualContentType,
   originAllowed,
 } from '@/lib/bff';
 
@@ -76,8 +77,21 @@ async function handle(
     );
   }
 
-  const text = await upstream.text();
+  const upstreamContentType = upstream.headers.get('content-type');
   const correlationOut = upstream.headers.get('x-correlation-id');
+
+  if (!isTextualContentType(upstreamContentType)) {
+    return new NextResponse(await upstream.arrayBuffer(), {
+      status: upstream.status,
+      headers: {
+        'content-type': upstreamContentType ?? 'application/octet-stream',
+        'cache-control': 'private, no-store',
+        ...(correlationOut ? { 'x-correlation-id': correlationOut } : {}),
+      },
+    });
+  }
+
+  const text = await upstream.text();
   const res = new NextResponse(text.length ? text : null, {
     status: upstream.status,
     headers: {

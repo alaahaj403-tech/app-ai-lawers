@@ -1,6 +1,7 @@
 import {
   AIModelRouter,
   MockRealtimeProvider,
+  MockTextToSpeechProvider,
   MockTranslationProvider,
   createOpenAIProviders,
 } from '@voxeli/ai-core';
@@ -41,6 +42,7 @@ export function createAIContainer(
     providers = {
       translation: { mock: new MockTranslationProvider() },
       realtime: { mock: new MockRealtimeProvider() },
+      speech: { mock: new MockTextToSpeechProvider() },
     };
   }
 

@@ -3,7 +3,11 @@ import { DEFAULT_MODEL_CONFIG } from '@voxeli/config';
 import type { ModelConfig } from '@voxeli/config';
 import { failures } from '@voxeli/domain';
 import { AIModelRouter } from './router.js';
-import { MockRealtimeProvider, MockTranslationProvider } from './mock/index.js';
+import {
+  MockRealtimeProvider,
+  MockTextToSpeechProvider,
+  MockTranslationProvider,
+} from './mock/index.js';
 import type { AIUsageRecord, TranslationProvider } from './types.js';
 import { ProviderHealth } from './health.js';
 
@@ -166,5 +170,50 @@ describe('AIModelRouter.selectRealtimeTier', () => {
     const r = router.selectRealtimeTier({ plan: 'pro', targetLanguage: 'yi', tier1Allowed: true });
     expect(r.tier).toBe('tier2_streaming');
     expect(r.degradedReason).toBe('tier1_unsupported_for_language');
+  });
+});
+
+describe('AIModelRouter.synthesize', () => {
+  it('routes to the speech slot and records character usage', async () => {
+    const usage = recorder();
+    const tts = new MockTextToSpeechProvider();
+    const router = new AIModelRouter(
+      mockConfig,
+      { translation: {}, realtime: {}, speech: { mock: tts } },
+      usage,
+    );
+    const out = await router.synthesize(
+      { text: 'שלום עולם', language: 'he', format: 'wav', feature: 'speech.synthesis' },
+      ctx,
+    );
+    expect(out.slot).toBe('speech.synthesis');
+    expect(out.mimeType).toBe('audio/wav');
+    expect(out.audio.byteLength).toBeGreaterThan(44);
+    expect(tts.calls).toBe(1);
+    expect(usage.records[0]).toMatchObject({ unit: 'characters', success: true, inputUnits: 9 });
+  });
+
+  it('fails cleanly when no speech provider is configured', async () => {
+    const router = new AIModelRouter(mockConfig, { translation: {}, realtime: {} }, recorder());
+    await expect(
+      router.synthesize({ text: 'hi', language: 'en', format: 'mp3', feature: 'f' }, ctx),
+    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+  });
+
+  it('records a failed attempt and surfaces the typed failure', async () => {
+    const usage = recorder();
+    const failing = {
+      id: 'mock' as const,
+      synthesize: () => Promise.reject(failures.providerUnavailable('tts down')),
+    };
+    const router = new AIModelRouter(
+      mockConfig,
+      { translation: {}, realtime: {}, speech: { mock: failing } },
+      usage,
+    );
+    await expect(
+      router.synthesize({ text: 'hi', language: 'en', format: 'mp3', feature: 'f' }, ctx),
+    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(usage.records[0]).toMatchObject({ success: false, errorCode: 'PROVIDER_UNAVAILABLE' });
   });
 });

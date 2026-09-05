@@ -30,6 +30,10 @@ docs/                ADRs, STATUS, TECH_DEBT, compliance, branding
 4. Persist (unless no-history) → respond with result, routing (slot, degraded, latency — never provider names), quota state.
 5. `ai_usage` row per provider attempt (cost/latency/success/fallback).
 
+## Speech path
+
+`POST /v1/speech` → audio-minute quota (refunded on provider failure) → `AIModelRouter.synthesize` (`speech.synthesis` slot, no quality tiers) → audio bytes, `private, no-store`, nothing persisted. The web BFF passes non-JSON responses through as bytes.
+
 ## Realtime path
 
 `POST /v1/realtime/sessions` → flag + quota + tier selection → ephemeral client secret → client connects directly (WebRTC/WS) → `POST …/metrics` at end. See ADR-0005.

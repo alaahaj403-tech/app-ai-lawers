@@ -48,7 +48,29 @@ async function call<T>(
   return json as T;
 }
 
+/** Returns synthesized audio bytes. Binary, so it bypasses the JSON helper. */
+async function speech(text: string, language: string, retryOn401 = true): Promise<Blob> {
+  const res = await fetch('/api/bff/v1/speech', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text, language, format: 'mp3' }),
+  });
+  if (res.status === 401 && retryOn401) {
+    const refreshed = await fetch('/api/bff/v1/auth/refresh', { method: 'POST' });
+    if (refreshed.ok) return speech(text, language, false);
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiErrorBody | null;
+    throw new ApiError(
+      res.status,
+      body?.error ?? { code: 'INTERNAL', message: 'Speech failed', retryable: false },
+    );
+  }
+  return res.blob();
+}
+
 export const api = {
+  speech,
   me: () => call<UserProfile>('GET', 'v1/auth/me'),
   register: (email: string, password: string, locale: string) =>
     call<Omit<AuthResponse, 'tokens'>>('POST', 'v1/auth/register', { email, password, locale }),

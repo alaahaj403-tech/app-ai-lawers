@@ -18,6 +18,7 @@ import { FlagService } from './modules/flags/service.js';
 import { adminFlagRoutes, flagRoutes } from './modules/flags/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { realtimeRoutes } from './modules/realtime/routes.js';
+import { speechRoutes } from './modules/speech/routes.js';
 import { TranslationRepository } from './modules/translation/repository.js';
 import { translationRoutes } from './modules/translation/routes.js';
 import { QuotaService } from './modules/usage/quota.js';
@@ -110,6 +111,7 @@ export async function buildApp(
     repo,
     bindCorrelation,
   });
+  await app.register(speechRoutes, { prefix: '/v1', router: ai.router, quota, bindCorrelation });
   await app.register(realtimeRoutes, {
     prefix: '/v1/realtime',
     db,

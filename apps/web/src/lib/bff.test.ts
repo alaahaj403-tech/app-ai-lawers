@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { authCookiesFrom, isAllowed, isAuthPath, originAllowed } from './bff.js';
+import {
+  authCookiesFrom,
+  isAllowed,
+  isAuthPath,
+  isTextualContentType,
+  originAllowed,
+} from './bff.js';
 
 describe('BFF allowlist', () => {
   it('permits only known API routes and methods', () => {
@@ -43,5 +49,22 @@ describe('auth cookies', () => {
     );
     expect(c[0]).toMatchObject({ name: 'voxeli_at', maxAgeSeconds: 900 });
     expect(c[1]?.maxAgeSeconds).toBe(0);
+  });
+});
+
+describe('content-type routing', () => {
+  it('treats JSON and text as textual, audio and binary as pass-through', () => {
+    expect(isTextualContentType('application/json')).toBe(true);
+    expect(isTextualContentType('application/json; charset=utf-8')).toBe(true);
+    expect(isTextualContentType('application/problem+json')).toBe(true);
+    expect(isTextualContentType('text/plain')).toBe(true);
+    expect(isTextualContentType(null)).toBe(true);
+    expect(isTextualContentType('audio/mpeg')).toBe(false);
+    expect(isTextualContentType('audio/L16;rate=24000')).toBe(false);
+    expect(isTextualContentType('application/octet-stream')).toBe(false);
+  });
+  it('allows the speech endpoint only as POST', () => {
+    expect(isAllowed('POST', 'v1/speech')).toBe(true);
+    expect(isAllowed('GET', 'v1/speech')).toBe(false);
   });
 });
