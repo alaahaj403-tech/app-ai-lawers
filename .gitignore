@@ -24,3 +24,5 @@ apps/mobile/*.iml
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
 apps/web/next-env.d.ts
+apps/web/tsconfig.tsbuildinfo
+*.tsbuildinfo
