@@ -37,7 +37,12 @@ describe('POST /v1/translate (vertical slice)', () => {
     // provider/model names must not leak to clients
     expect(JSON.stringify(body)).not.toMatch(/gpt|openai|mock/i);
 
-    const usage = await built.db.execute(sql`select feature, success, user_id from ai_usage`);
+    // One row per provider attempt. The first pass is `translate.text`; a repair
+    // pass records `translate.text.repair`, and the mock provider echoes the
+    // source, which the source-script check treats as a leak worth retrying.
+    const usage = await built.db.execute(
+      sql`select feature, success, user_id from ai_usage where feature = 'translate.text'`,
+    );
     expect(usage.length).toBe(1);
     expect(usage[0]).toMatchObject({ feature: 'translate.text', success: true, user_id: user.id });
 

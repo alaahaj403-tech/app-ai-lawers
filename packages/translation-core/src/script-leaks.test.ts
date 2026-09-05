@@ -13,6 +13,13 @@ describe('scriptOf', () => {
     expect(scriptOf('zh')).toBeUndefined();
     expect(scriptOf('')).toBeUndefined();
   });
+  it('does not resolve tags through the object prototype chain', () => {
+    // A plain object literal answers `constructor` with a function, which then
+    // crashes the caller. Language tags come from request payloads.
+    for (const tag of ['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__']) {
+      expect(scriptOf(tag), tag).toBeUndefined();
+    }
+  });
 });
 
 describe('detectScriptLeaks', () => {
@@ -71,6 +78,11 @@ describe('detectScriptLeaks', () => {
         sourceLanguage: 'en',
         targetLanguage: 'de',
       }),
+    ).toEqual([]);
+  });
+  it('stays silent rather than throwing on a prototype-chain tag', () => {
+    expect(
+      detectScriptLeaks('שלום world', { sourceLanguage: 'constructor', targetLanguage: 'en' }),
     ).toEqual([]);
   });
   it('stays silent when either language is unknown to it', () => {

@@ -19,40 +19,46 @@ export type TextScript = 'Latin' | 'Hebrew' | 'Arabic' | 'Cyrillic' | 'Greek';
 /**
  * Primary-subtag → script. Only languages the product actually advertises are
  * listed; an unknown tag disables the check rather than guessing at it.
+ *
+ * A Map, not an object literal: language tags arrive from request payloads, and
+ * a plain object resolves `constructor` through the prototype chain, handing
+ * back a function where the type promises a TextScript.
  */
-const LANGUAGE_SCRIPTS: Readonly<Record<string, TextScript>> = {
-  ar: 'Arabic',
-  fa: 'Arabic',
-  ur: 'Arabic',
-  he: 'Hebrew',
-  yi: 'Hebrew',
-  ru: 'Cyrillic',
-  uk: 'Cyrillic',
-  bg: 'Cyrillic',
-  sr: 'Cyrillic',
-  el: 'Greek',
-  cs: 'Latin',
-  da: 'Latin',
-  de: 'Latin',
-  en: 'Latin',
-  es: 'Latin',
-  fi: 'Latin',
-  fr: 'Latin',
-  id: 'Latin',
-  it: 'Latin',
-  nl: 'Latin',
-  pl: 'Latin',
-  pt: 'Latin',
-  ro: 'Latin',
-  sv: 'Latin',
-  tr: 'Latin',
-  vi: 'Latin',
-};
+const LANGUAGE_SCRIPTS = new Map<string, TextScript>(
+  Object.entries({
+    ar: 'Arabic',
+    fa: 'Arabic',
+    ur: 'Arabic',
+    he: 'Hebrew',
+    yi: 'Hebrew',
+    ru: 'Cyrillic',
+    uk: 'Cyrillic',
+    bg: 'Cyrillic',
+    sr: 'Cyrillic',
+    el: 'Greek',
+    cs: 'Latin',
+    da: 'Latin',
+    de: 'Latin',
+    en: 'Latin',
+    es: 'Latin',
+    fi: 'Latin',
+    fr: 'Latin',
+    id: 'Latin',
+    it: 'Latin',
+    nl: 'Latin',
+    pl: 'Latin',
+    pt: 'Latin',
+    ro: 'Latin',
+    sv: 'Latin',
+    tr: 'Latin',
+    vi: 'Latin',
+  } as const),
+);
 
 /** Resolve a BCP-47 tag to its script. Returns undefined for anything unlisted. */
 export function scriptOf(languageTag: string): TextScript | undefined {
   const primary = languageTag.toLowerCase().split(/[-_]/u)[0];
-  return primary === undefined ? undefined : LANGUAGE_SCRIPTS[primary];
+  return primary === undefined ? undefined : LANGUAGE_SCRIPTS.get(primary);
 }
 
 /**

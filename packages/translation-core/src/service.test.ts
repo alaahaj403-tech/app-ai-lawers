@@ -80,6 +80,102 @@ describe('TranslationService', () => {
     expect(out.result.integrity.violations).toEqual(['number:88421']);
   });
 
+  it('repairs a word left in the source script and reports the result clean', async () => {
+    let calls = 0;
+    const provider: TranslationProvider = {
+      id: 'mock',
+      // First attempt leaves the Hebrew currency abbreviation in English output;
+      // the retry renders it. Mirrors the gpt-5.6-sol behaviour seen in the eval.
+      translate: async () => {
+        calls += 1;
+        return {
+          detectedLanguage: 'he',
+          translatedText:
+            calls === 1
+              ? 'The price is 1,250 ש"ח including VAT.'
+              : 'The price is 1,250 NIS, including VAT.',
+          alternatives: [],
+          ambiguities: [],
+          register: 'neutral' as const,
+          notes: [],
+          usage: { inputTokens: 1, outputTokens: 1 },
+        };
+      },
+    };
+    const svc = new TranslationService(
+      new AIModelRouter(cfg, { translation: { mock: provider }, realtime: {} }, noUsage),
+    );
+    const out = await svc.translate(
+      {
+        text: 'המחיר הוא 1,250 ש"ח כולל מע"מ.',
+        sourceLanguage: 'he',
+        targetLanguage: 'en',
+        mode: 'business',
+      },
+      { plan: 'pro', quality: 'high' },
+      ctx,
+    );
+    expect(calls).toBe(2);
+    expect(out.repaired).toBe(true);
+    expect(out.scriptLeaks).toEqual([]);
+    expect(out.result.translatedText).toContain('NIS');
+  });
+
+  it('keeps the first attempt when the retry does not improve it', async () => {
+    let calls = 0;
+    const provider: TranslationProvider = {
+      id: 'mock',
+      translate: async () => {
+        calls += 1;
+        return {
+          detectedLanguage: 'he',
+          translatedText: 'The price is 1,250 ש"ח including VAT.',
+          alternatives: [],
+          ambiguities: [],
+          register: 'neutral' as const,
+          notes: [],
+          usage: { inputTokens: 1, outputTokens: 1 },
+        };
+      },
+    };
+    const svc = new TranslationService(
+      new AIModelRouter(cfg, { translation: { mock: provider }, realtime: {} }, noUsage),
+    );
+    const out = await svc.translate(
+      {
+        text: 'המחיר הוא 1,250 ש"ח כולל מע"מ.',
+        sourceLanguage: 'he',
+        targetLanguage: 'en',
+        mode: 'business',
+      },
+      { plan: 'pro', quality: 'high' },
+      ctx,
+    );
+    expect(calls).toBe(2);
+    expect(out.repaired).toBe(false);
+    // Reported honestly rather than hidden: the user-visible text still leaks.
+    expect(out.scriptLeaks).toEqual(['ש"ח']);
+  });
+
+  it('does not attempt a script repair for a same-script language pair', async () => {
+    const provider = new MockTranslationProvider();
+    const svc = new TranslationService(
+      new AIModelRouter(cfg, { translation: { mock: provider }, realtime: {} }, noUsage),
+    );
+    const out = await svc.translate(
+      {
+        text: 'Docs at https://voxeli.app',
+        sourceLanguage: 'en',
+        targetLanguage: 'de',
+        mode: 'natural',
+      },
+      { plan: 'free', quality: 'default' },
+      ctx,
+    );
+    expect(provider.calls).toBe(1);
+    expect(out.scriptLeaks).toEqual([]);
+  });
+
   it('rejects unsupported target languages before calling a provider', async () => {
     const provider = new MockTranslationProvider();
     const svc = new TranslationService(

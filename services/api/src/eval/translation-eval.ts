@@ -1,12 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { AIUsageRecord } from '@voxeli/ai-core';
-import {
-  REGRESSION_CASES,
-  detectScriptLeaks,
-  extractProtectedEntities,
-  scriptOf,
-} from '@voxeli/translation-core';
+import { REGRESSION_CASES, extractProtectedEntities, scriptOf } from '@voxeli/translation-core';
 import type { RegressionCase } from '@voxeli/translation-core';
 import type { Plan } from '@voxeli/domain';
 import { createAIContainer } from '../ai/container.js';
@@ -126,12 +121,9 @@ async function main(): Promise<void> {
           !outcome.result.translatedText.includes(m),
       );
 
-      // A word left in the source script is a broken translation, not a
-      // stylistic variant — the entity checks above cannot see it.
-      const scriptLeaks = detectScriptLeaks(outcome.result.translatedText, {
-        sourceLanguage: testCase.sourceLanguage,
-        targetLanguage: testCase.targetLanguage,
-      });
+      // Reported by the service after its repair pass, so this is what a user
+      // would actually have received — not a recomputation of the first draft.
+      const scriptLeaks = [...outcome.scriptLeaks];
 
       results.push({
         id: testCase.id,
@@ -179,8 +171,8 @@ async function main(): Promise<void> {
 
   const failed = results.filter((r) => !r.ok);
   const latencies = results.map((r) => r.latencyMs).sort((a, b) => a - b);
-  const p50 = latencies[Math.floor(latencies.length * 0.5)] ?? 0;
-  const p95 = latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * 0.95))] ?? 0;
+  const p50 = percentile(latencies, 0.5);
+  const p95 = percentile(latencies, 0.95);
   const inputTokens = usage.reduce((n, u) => n + u.inputUnits, 0);
   const outputTokens = usage.reduce((n, u) => n + u.outputUnits, 0);
   const costed = usage.filter((u) => u.estimatedCostUsd !== null);
@@ -245,6 +237,17 @@ async function main(): Promise<void> {
   }
 
   process.exit(failed.length === 0 ? 0 : 1);
+}
+
+/**
+ * Nearest-rank percentile: the smallest value at or above the given fraction of
+ * the sorted sample. `floor(n * p)` is off by one for exact ranks — with 10
+ * samples it reports the 6th as the median rather than the 5th.
+ */
+function percentile(sorted: readonly number[], fraction: number): number {
+  if (sorted.length === 0) return 0;
+  const rank = Math.max(1, Math.ceil(fraction * sorted.length));
+  return sorted[Math.min(rank, sorted.length) - 1] ?? 0;
 }
 
 main().catch((error: unknown) => {
