@@ -146,4 +146,82 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cancel => 'Cancelar';
+
+  @override
+  String get talkTitle => 'Hablar';
+
+  @override
+  String get talkStart => 'Iniciar conversación';
+
+  @override
+  String get talkStop => 'Terminar';
+
+  @override
+  String get talkIdleHint =>
+      'Habla en tu idioma. La otra persona escucha el suyo.';
+
+  @override
+  String get talkMyLanguage => 'Yo hablo';
+
+  @override
+  String get talkTargetLanguage => 'Ellos hablan';
+
+  @override
+  String get stateListening => 'Escuchando';
+
+  @override
+  String get stateTranslating => 'Traduciendo';
+
+  @override
+  String get stateSpeaking => 'Hablando';
+
+  @override
+  String get stateConnecting => 'Conectando';
+
+  @override
+  String get stateReconnecting => 'Reconectando…';
+
+  @override
+  String get stateEnded => 'Finalizada';
+
+  @override
+  String get micOn => 'Micrófono activado';
+
+  @override
+  String get micOff => 'Micrófono desactivado';
+
+  @override
+  String get speakerOn => 'Voz activada';
+
+  @override
+  String get speakerOff => 'Voz desactivada';
+
+  @override
+  String minutesUsed(int used, int limit) {
+    return '$used de $limit minutos usados este mes';
+  }
+
+  @override
+  String minutesUsedUnlimited(int used) {
+    return '$used minutos usados este mes';
+  }
+
+  @override
+  String get permissionDenied =>
+      'Se denegó el acceso al micrófono. Permítelo en los ajustes del sistema para usar Hablar.';
+
+  @override
+  String get connectionLost => 'Conexión perdida.';
+
+  @override
+  String sessionEndedAfter(String duration) {
+    return 'Sesión finalizada tras $duration.';
+  }
+
+  @override
+  String get listen => 'Escuchar';
+
+  @override
+  String get mockNotice =>
+      'Servidor de desarrollo: las transcripciones y traducciones son marcadores, no reconocimiento de voz.';
 }

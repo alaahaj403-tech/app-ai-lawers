@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/server_settings.dart';
-import 'features/translate/translate_screen.dart';
+import 'app_shell.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
@@ -54,7 +54,7 @@ class VoxeliApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: themed(Brightness.light),
       darkTheme: themed(Brightness.dark),
-      home: const TranslateScreen(),
+      home: const AppShell(),
     );
   }
 }

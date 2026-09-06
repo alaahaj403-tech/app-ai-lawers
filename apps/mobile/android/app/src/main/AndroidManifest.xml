@@ -1,5 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Network is required for every feature; the debug manifest only covers debug builds. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Requested contextually when the user opens Talk, never at onboarding. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <!-- Test builds talk to a LAN server over http. Set to false before a store release (see docs/LAUNCH_CHECKLIST.md). -->
     <application
+        android:usesCleartextTraffic="true"
         android:label="Voxeli"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

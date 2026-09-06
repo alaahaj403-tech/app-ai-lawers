@@ -147,4 +147,82 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get cancel => 'Abbrechen';
+
+  @override
+  String get talkTitle => 'Sprechen';
+
+  @override
+  String get talkStart => 'Gespräch starten';
+
+  @override
+  String get talkStop => 'Beenden';
+
+  @override
+  String get talkIdleHint =>
+      'Sprich in deiner Sprache. Die andere Seite hört ihre.';
+
+  @override
+  String get talkMyLanguage => 'Ich spreche';
+
+  @override
+  String get talkTargetLanguage => 'Sie sprechen';
+
+  @override
+  String get stateListening => 'Hört zu';
+
+  @override
+  String get stateTranslating => 'Übersetzt';
+
+  @override
+  String get stateSpeaking => 'Spricht';
+
+  @override
+  String get stateConnecting => 'Verbinden';
+
+  @override
+  String get stateReconnecting => 'Erneut verbinden…';
+
+  @override
+  String get stateEnded => 'Beendet';
+
+  @override
+  String get micOn => 'Mikrofon an';
+
+  @override
+  String get micOff => 'Mikrofon aus';
+
+  @override
+  String get speakerOn => 'Stimme an';
+
+  @override
+  String get speakerOff => 'Stimme aus';
+
+  @override
+  String minutesUsed(int used, int limit) {
+    return '$used von $limit Minuten diesen Monat genutzt';
+  }
+
+  @override
+  String minutesUsedUnlimited(int used) {
+    return '$used Minuten diesen Monat genutzt';
+  }
+
+  @override
+  String get permissionDenied =>
+      'Mikrofonzugriff verweigert. Erlaube ihn in den Systemeinstellungen, um Sprechen zu nutzen.';
+
+  @override
+  String get connectionLost => 'Verbindung verloren.';
+
+  @override
+  String sessionEndedAfter(String duration) {
+    return 'Sitzung nach $duration beendet.';
+  }
+
+  @override
+  String get listen => 'Anhören';
+
+  @override
+  String get mockNotice =>
+      'Entwicklungsserver: Transkripte und Übersetzungen sind Platzhalter, keine Spracherkennung.';
 }

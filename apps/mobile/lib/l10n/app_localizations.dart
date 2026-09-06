@@ -353,6 +353,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get cancel;
+
+  /// No description provided for @talkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk'**
+  String get talkTitle;
+
+  /// No description provided for @talkStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start conversation'**
+  String get talkStart;
+
+  /// No description provided for @talkStop.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get talkStop;
+
+  /// No description provided for @talkIdleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak in your language. The other side hears theirs.'**
+  String get talkIdleHint;
+
+  /// No description provided for @talkMyLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'I speak'**
+  String get talkMyLanguage;
+
+  /// No description provided for @talkTargetLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'They speak'**
+  String get talkTargetLanguage;
+
+  /// No description provided for @stateListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get stateListening;
+
+  /// No description provided for @stateTranslating.
+  ///
+  /// In en, this message translates to:
+  /// **'Translating'**
+  String get stateTranslating;
+
+  /// No description provided for @stateSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking'**
+  String get stateSpeaking;
+
+  /// No description provided for @stateConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get stateConnecting;
+
+  /// No description provided for @stateReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get stateReconnecting;
+
+  /// No description provided for @stateEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get stateEnded;
+
+  /// No description provided for @micOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone on'**
+  String get micOn;
+
+  /// No description provided for @micOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone off'**
+  String get micOff;
+
+  /// No description provided for @speakerOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice on'**
+  String get speakerOn;
+
+  /// No description provided for @speakerOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice off'**
+  String get speakerOff;
+
+  /// No description provided for @minutesUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} of {limit} minutes used this month'**
+  String minutesUsed(int used, int limit);
+
+  /// No description provided for @minutesUsedUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'{used} minutes used this month'**
+  String minutesUsedUnlimited(int used);
+
+  /// No description provided for @permissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone access was denied. Allow it in system settings to use Talk.'**
+  String get permissionDenied;
+
+  /// No description provided for @connectionLost.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost.'**
+  String get connectionLost;
+
+  /// No description provided for @sessionEndedAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended after {duration}.'**
+  String sessionEndedAfter(String duration);
+
+  /// No description provided for @listen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get listen;
+
+  /// No description provided for @mockNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Development server: transcripts and translations are placeholders, not recognized speech.'**
+  String get mockNotice;
 }
 
 class _AppLocalizationsDelegate

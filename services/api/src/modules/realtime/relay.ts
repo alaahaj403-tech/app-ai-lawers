@@ -37,6 +37,10 @@ export interface RelayDeps {
   now?: () => number;
   setInterval?: typeof setInterval;
   clearInterval?: typeof clearInterval;
+  /** How long a session survives without a socket before it is closed (default 30 s). */
+  detachGraceMs?: number;
+  /** Called when the session has fully finished, so a registry can forget it. */
+  onFinished?: (sessionId: string) => void;
 }
 
 export interface RelaySessionContext {
@@ -59,6 +63,7 @@ export const RELAY_CLOSE = {
 } as const;
 
 const METER_INTERVAL_MS = 60_000;
+const DEFAULT_DETACH_GRACE_MS = 30_000;
 
 /**
  * Tier-2 realtime relay.
@@ -77,9 +82,15 @@ export class RelaySession {
   private pipeline: RealtimeTranslationPipeline | null = null;
   private closed = false;
   private closeReason = 'client_closed';
+  /** True between a socket loss and a reattach; nothing is sent, the ledger keeps filling. */
+  private detached = false;
+  private graceTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnects = 0;
+  /** Segment ids already announced on the current socket; a replay never repeats them. */
+  private sentSegments = new Set<string>();
 
   constructor(
-    private readonly socket: RelaySocket,
+    private socket: RelaySocket,
     private readonly ctx: RelaySessionContext,
     private readonly deps: RelayDeps,
   ) {
@@ -94,8 +105,54 @@ export class RelaySession {
   }
 
   private send(message: RelayServerMessage): void {
-    if (this.closed) return;
+    if (this.closed || this.detached) return;
     this.socket.send(JSON.stringify(message));
+  }
+
+  private sendSegment(entry: { id: string; original: string; sourceLanguage: string }): void {
+    if (this.sentSegments.has(entry.id)) return;
+    this.sentSegments.add(entry.id);
+    this.send({
+      type: 'segment',
+      segmentId: entry.id,
+      original: entry.original,
+      sourceLanguage: entry.sourceLanguage,
+    });
+  }
+
+  get isLive(): boolean {
+    return !this.closed;
+  }
+
+  /**
+   * A client that lost its connection comes back with a fresh ticket. The
+   * provider stream, ledger and metering carried on; only the socket changes.
+   * The client then sends `resume` to receive what it missed.
+   */
+  attach(socket: RelaySocket): void {
+    if (this.closed) throw failures.conflict('Session already ended');
+    if (this.graceTimer) {
+      clearTimeout(this.graceTimer);
+      this.graceTimer = null;
+    }
+    // Drop the old socket quietly if it is somehow still open.
+    try {
+      this.socket.close(RELAY_CLOSE.normal, 'replaced');
+    } catch {
+      /* already gone */
+    }
+    this.socket = socket;
+    this.detached = false;
+    this.reconnects += 1;
+    this.sentSegments = new Set();
+    this.wireSocket();
+    this.send({
+      type: 'ready',
+      sessionId: this.ctx.sessionId,
+      tier: 'tier2_streaming',
+      sampleRate: RELAY_SAMPLE_RATE,
+      speakTranslations: this.ctx.speakTranslations,
+    });
   }
 
   async run(): Promise<void> {
@@ -208,9 +265,8 @@ export class RelaySession {
             return;
           }
           if (caption.segmentId) {
-            this.send({
-              type: 'segment',
-              segmentId: caption.segmentId,
+            this.sendSegment({
+              id: caption.segmentId,
               original: caption.original,
               sourceLanguage: this.ctx.myLanguage,
             });
@@ -273,12 +329,7 @@ export class RelaySession {
         case 'resume': {
           // Replay only what the client is missing — never duplicate segments.
           for (const entry of this.pipeline?.ledger.since(message.data.lastSegmentId) ?? []) {
-            this.send({
-              type: 'segment',
-              segmentId: entry.id,
-              original: entry.original,
-              sourceLanguage: entry.sourceLanguage,
-            });
+            this.sendSegment(entry);
             if (entry.translated !== null) {
               this.send({ type: 'translation', segmentId: entry.id, text: entry.translated });
             }
@@ -288,8 +339,24 @@ export class RelaySession {
       }
     });
 
-    this.socket.onClose(() => {
-      this.source.stop();
+    const boundSocket = this.socket;
+    boundSocket.onClose(() => {
+      if (this.closed || this.socket !== boundSocket) return; // replaced by attach()
+      if (this.closeReason === 'client_stopped') {
+        this.source.stop();
+        return;
+      }
+      // Connection lost mid-session: keep everything alive for a grace period
+      // so the client can reattach without losing confirmed segments.
+      this.detached = true;
+      this.graceTimer = setTimeout(() => {
+        if (this.closed) return;
+        this.closeReason = 'connection_lost';
+        this.source.stop();
+      }, this.deps.detachGraceMs ?? DEFAULT_DETACH_GRACE_MS);
+      if (typeof this.graceTimer === 'object' && 'unref' in this.graceTimer) {
+        (this.graceTimer as { unref: () => void }).unref();
+      }
     });
   }
 
@@ -333,11 +400,14 @@ export class RelaySession {
     this.closed = true;
     const clear = this.deps.clearInterval ?? clearInterval;
     if (this.meterTimer) clear(this.meterTimer);
+    if (this.graceTimer) clearTimeout(this.graceTimer);
     this.source.stop();
+    this.pipeline?.stop().catch(() => undefined);
 
     const durationSeconds = Math.max(0, Math.round((this.now() - this.startedAt) / 1000));
     const metrics = {
       minutesCharged: this.minutesCharged,
+      reconnects: this.reconnects,
       droppedFrames: this.source.dropped,
       segments: this.pipeline?.ledger.all().length ?? 0,
       latency: this.pipeline?.latency.snapshot() ?? {},
@@ -357,6 +427,8 @@ export class RelaySession {
       this.deps.log.warn({ err: error }, 'failed to persist relay session metrics');
     }
 
+    this.deps.onFinished?.(this.ctx.sessionId);
+    if (this.detached) return; // nobody is listening
     // `closed` is already true, so send directly.
     this.socket.send(
       JSON.stringify({

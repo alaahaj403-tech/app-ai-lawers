@@ -23,7 +23,7 @@ import { FlagService } from './modules/flags/service.js';
 import { adminFlagRoutes, flagRoutes } from './modules/flags/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { realtimeRoutes } from './modules/realtime/routes.js';
-import { relayRoutes } from './modules/realtime/stream-routes.js';
+import { RelayRegistry, relayRoutes } from './modules/realtime/stream-routes.js';
 import { speechRoutes } from './modules/speech/routes.js';
 import { TranslationRepository } from './modules/translation/repository.js';
 import { translationRoutes } from './modules/translation/routes.js';
@@ -33,12 +33,16 @@ import { DbUsageRecorder } from './modules/usage/recorder.js';
 export interface BuiltApp {
   app: FastifyInstance;
   db: Db;
+  /** Live Tier-2 relay sessions on this instance. */
+  relayRegistry: RelayRegistry;
   close: () => Promise<void>;
 }
 
 /** Test seams. Production wiring ignores them. */
 export interface AppOverrides {
   email?: EmailProvider;
+  /** Shorten the relay's reconnect grace window in tests. */
+  relayDetachGraceMs?: number;
 }
 
 export async function buildApp(
@@ -147,8 +151,10 @@ export async function buildApp(
     bindCorrelation,
   });
   await app.register(speechRoutes, { prefix: '/v1', router: ai.router, quota, bindCorrelation });
+  const relayRegistry = new RelayRegistry();
   await app.register(relayRoutes, {
     prefix: '/v1/realtime',
+    registry: relayRegistry,
     db,
     router: ai.router,
     translation: ai.translation,
@@ -156,6 +162,9 @@ export async function buildApp(
     quota,
     tokens,
     modelConfig: ai.modelConfig,
+    ...(overrides.relayDetachGraceMs !== undefined
+      ? { detachGraceMs: overrides.relayDetachGraceMs }
+      : {}),
   });
   await app.register(realtimeRoutes, {
     prefix: '/v1/realtime',
@@ -173,6 +182,7 @@ export async function buildApp(
   return {
     app,
     db,
+    relayRegistry,
     close: async () => {
       await app.close();
       await closeDb();

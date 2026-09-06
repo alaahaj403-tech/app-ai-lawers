@@ -148,4 +148,81 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cancel => 'إلغاء';
+
+  @override
+  String get talkTitle => 'محادثة';
+
+  @override
+  String get talkStart => 'بدء المحادثة';
+
+  @override
+  String get talkStop => 'إنهاء';
+
+  @override
+  String get talkIdleHint => 'تحدّث بلغتك. الطرف الآخر يسمع بلغته.';
+
+  @override
+  String get talkMyLanguage => 'أنا أتحدث';
+
+  @override
+  String get talkTargetLanguage => 'هم يتحدثون';
+
+  @override
+  String get stateListening => 'يستمع';
+
+  @override
+  String get stateTranslating => 'يترجم';
+
+  @override
+  String get stateSpeaking => 'يتحدث';
+
+  @override
+  String get stateConnecting => 'جارٍ الاتصال';
+
+  @override
+  String get stateReconnecting => 'جارٍ إعادة الاتصال…';
+
+  @override
+  String get stateEnded => 'انتهت';
+
+  @override
+  String get micOn => 'الميكروفون يعمل';
+
+  @override
+  String get micOff => 'الميكروفون مغلق';
+
+  @override
+  String get speakerOn => 'الصوت يعمل';
+
+  @override
+  String get speakerOff => 'الصوت مغلق';
+
+  @override
+  String minutesUsed(int used, int limit) {
+    return 'استُخدمت $used من $limit دقيقة هذا الشهر';
+  }
+
+  @override
+  String minutesUsedUnlimited(int used) {
+    return 'استُخدمت $used دقيقة هذا الشهر';
+  }
+
+  @override
+  String get permissionDenied =>
+      'تم رفض الوصول إلى الميكروفون. اسمح به في إعدادات النظام لاستخدام المحادثة.';
+
+  @override
+  String get connectionLost => 'انقطع الاتصال.';
+
+  @override
+  String sessionEndedAfter(String duration) {
+    return 'انتهت الجلسة بعد $duration.';
+  }
+
+  @override
+  String get listen => 'استماع';
+
+  @override
+  String get mockNotice =>
+      'خادم تطوير: النصوص والترجمات عناصر نائبة، ليست تعرّفًا على الكلام.';
 }

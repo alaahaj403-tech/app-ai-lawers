@@ -54,6 +54,31 @@ describe('realtime sessions', () => {
     expect(r2.json().relay).toBeNull();
   });
 
+  it('honours a client that asks for the relay even on a tier-1 plan', async () => {
+    const pro = await registerUser(built, 'relaypref@example.com');
+    await setPlan(built, pro.user.id, 'pro');
+    const login = await built.app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'relaypref@example.com', password: 'correct-horse-battery-staple' },
+    });
+    const res = await built.app.inject({
+      method: 'POST',
+      url: '/v1/realtime/sessions',
+      headers: auth(login.json().tokens.accessToken as string),
+      payload: {
+        kind: 'face_to_face',
+        myLanguage: 'he',
+        targetLanguage: 'en',
+        preferredTier: 'tier2_streaming',
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().tier).toBe('tier2_streaming');
+    expect(res.json().relay.ticket).toBeTruthy();
+    expect(res.json().degradedReason).toBe('plan_does_not_include_tier1');
+  });
+
   it('caps the tier-1 provider credential lifetime by the remaining minutes', async () => {
     const pro = await registerUser(built, 'cap@example.com');
     await setPlan(built, pro.user.id, 'pro');

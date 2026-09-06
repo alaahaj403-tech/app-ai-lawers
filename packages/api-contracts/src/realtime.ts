@@ -24,6 +24,12 @@ export const createRealtimeSessionSchema = z.object({
   /** Whether audio is persisted. Requires the explicit recording workflow client-side. */
   recording: z.boolean().default(false),
   transport: z.enum(['webrtc', 'websocket']).default('webrtc'),
+  /**
+   * Clients that cannot run a direct WebRTC session (no media stack, or a
+   * policy that requires the media path to be metered) ask for the relay.
+   * The server never upgrades a client above what its plan allows.
+   */
+  preferredTier: z.enum(['tier1_s2s', 'tier2_streaming']).optional(),
 });
 export type CreateRealtimeSession = z.infer<typeof createRealtimeSessionSchema>;
 

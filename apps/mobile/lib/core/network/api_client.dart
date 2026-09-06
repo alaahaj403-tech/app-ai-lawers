@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -25,6 +26,31 @@ class ApiClient {
   final Dio _dio;
   final TokenStore _tokens;
   Future<bool>? _refreshing;
+
+  /// The configured server, e.g. `https://api.voxeli.app`.
+  String get baseUrl => _dio.options.baseUrl;
+
+  /// The WebSocket origin for the same server (`wss://` for https).
+  Uri websocketUri(String path, Map<String, String> query) {
+    final base = Uri.parse(baseUrl);
+    return base.replace(scheme: base.scheme == 'https' ? 'wss' : 'ws', path: path, queryParameters: query);
+  }
+
+  /// POST that returns raw bytes (speech synthesis).
+  Future<({Uint8List bytes, String mimeType})> postBytes(String path, {Object? body}) async {
+    try {
+      final res = await _dio.post<List<int>>(
+        path,
+        data: body,
+        options: Options(responseType: ResponseType.bytes, extra: {'auth': true}),
+      );
+      final data = res.data;
+      final mime = res.headers.value('content-type') ?? 'application/octet-stream';
+      return (bytes: Uint8List.fromList(data ?? const []), mimeType: mime.split(';').first.trim());
+    } on DioException catch (e) {
+      throw _map(e);
+    }
+  }
 
   Future<Map<String, dynamic>> post(String path, {Object? body, bool auth = true}) =>
       _send('POST', path, body: body, auth: auth);

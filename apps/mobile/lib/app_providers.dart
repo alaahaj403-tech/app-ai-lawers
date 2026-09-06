@@ -4,7 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/token_store.dart';
 import 'core/config/server_settings.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'core/audio/audio_capture.dart';
+import 'core/audio/speech_player.dart';
 import 'core/network/api_client.dart';
+import 'features/talk/relay_client.dart';
 import 'features/translate/translate_repository.dart';
 
 final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
@@ -29,3 +34,12 @@ String _uuidV4() {
 }
 
 final uuidProvider = Provider<String Function()>((ref) => _uuidV4);
+
+/// Device audio in/out. Overridden with fakes in tests and previews.
+final audioCaptureProvider = Provider<AudioCapture>((ref) => RecorderAudioCapture());
+final speechPlayerProvider = Provider<SpeechPlayer>((ref) {
+  final player = AudioplayersSpeechPlayer();
+  ref.onDispose(player.dispose);
+  return player;
+});
+final channelFactoryProvider = Provider<ChannelFactory>((ref) => WebSocketChannel.connect);

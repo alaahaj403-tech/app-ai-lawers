@@ -55,7 +55,9 @@ export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app
     if (q.limit !== null && q.used >= q.limit)
       throw failures.quota('Realtime minutes exhausted', { dimension: 'realtime_minutes' });
 
-    const tier1Allowed = DEFAULT_ENTITLEMENTS[user.plan].features.realtimeTier1;
+    const tier1Allowed =
+      DEFAULT_ENTITLEMENTS[user.plan].features.realtimeTier1 &&
+      body.preferredTier !== 'tier2_streaming';
     const selection = deps.router.selectRealtimeTier({
       plan: user.plan,
       targetLanguage: body.targetLanguage,
@@ -125,6 +127,36 @@ export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app
       quota: { dimension: 'realtime_minutes', used: q.used, limit: q.limit },
     };
     return reply.status(201).send(response);
+  });
+
+  /** A reconnecting client needs a fresh ticket; the old one lived 60 s. */
+  app.post('/sessions/:id/ticket', async (req) => {
+    const { id } = z.object({ id: uuidSchema }).parse(req.params);
+    const user = currentUser(req);
+    const [session] = await deps.db
+      .select({
+        id: realtimeSessions.id,
+        tier: realtimeSessions.tier,
+        endedAt: realtimeSessions.endedAt,
+      })
+      .from(realtimeSessions)
+      .where(and(eq(realtimeSessions.id, id), eq(realtimeSessions.userId, user.sub)))
+      .limit(1);
+    if (!session) throw failures.notFound('Session not found');
+    if (session.endedAt) throw failures.conflict('Session already ended');
+    if (session.tier !== 'tier2_streaming')
+      throw failures.validation('This session does not use the relay');
+    const ticket = await deps.tokens.signRelayTicket(
+      { sub: user.sub, sid: session.id, plan: user.plan },
+      RELAY_TICKET_TTL_SECONDS,
+    );
+    return {
+      relay: {
+        path: '/v1/realtime/stream',
+        ticket: ticket.ticket,
+        expiresAt: ticket.expiresAt.toISOString(),
+      },
+    };
   });
 
   app.post('/sessions/:id/metrics', async (req) => {

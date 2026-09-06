@@ -61,5 +61,52 @@
   "serverUrlHelp": "Where this app sends translations. Change only for testing against your own server.",
   "serverUrlInvalid": "Enter a full http(s) address.",
   "resetDefault": "Reset",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "talkTitle": "Talk",
+  "talkStart": "Start conversation",
+  "talkStop": "End",
+  "talkIdleHint": "Speak in your language. The other side hears theirs.",
+  "talkMyLanguage": "I speak",
+  "talkTargetLanguage": "They speak",
+  "stateListening": "Listening",
+  "stateTranslating": "Translating",
+  "stateSpeaking": "Speaking",
+  "stateConnecting": "Connecting",
+  "stateReconnecting": "Reconnecting…",
+  "stateEnded": "Ended",
+  "micOn": "Microphone on",
+  "micOff": "Microphone off",
+  "speakerOn": "Voice on",
+  "speakerOff": "Voice off",
+  "minutesUsed": "{used} of {limit} minutes used this month",
+  "minutesUsedUnlimited": "{used} minutes used this month",
+  "permissionDenied": "Microphone access was denied. Allow it in system settings to use Talk.",
+  "connectionLost": "Connection lost.",
+  "sessionEndedAfter": "Session ended after {duration}.",
+  "listen": "Listen",
+  "mockNotice": "Development server: transcripts and translations are placeholders, not recognized speech.",
+  "@minutesUsed": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesUsedUnlimited": {
+    "placeholders": {
+      "used": {
+        "type": "int"
+      }
+    }
+  },
+  "@sessionEndedAfter": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  }
 }

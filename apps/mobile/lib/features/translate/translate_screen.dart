@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_providers.dart';
 import '../../core/config/server_settings.dart';
+import '../../core/network/api_failure.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/languages.dart';
 import '../auth/auth_controller.dart';
@@ -20,6 +22,27 @@ class TranslateScreen extends ConsumerStatefulWidget {
 }
 
 class _TranslateScreenState extends ConsumerState<TranslateScreen> {
+  bool _speaking = false;
+
+  /// Journey B on mobile: hear the translation through the server voice.
+  Future<void> _listen(String text, String language) async {
+    if (_speaking) return;
+    setState(() => _speaking = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final audio = await api.postBytes('/v1/speech', body: {'text': text, 'language': language, 'format': 'mp3'});
+      await ref.read(speechPlayerProvider).play(audio.bytes, mimeType: audio.mimeType);
+    } on ApiFailure catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.code == 'QUOTA_EXCEEDED' ? l10n.errorQuota : l10n.errorProvider)),
+      );
+    } finally {
+      if (mounted) setState(() => _speaking = false);
+    }
+  }
+
   final _text = TextEditingController();
   bool _copied = false;
 
@@ -144,6 +167,8 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
                 response: state.result!,
                 sourceIsAuto: state.sourceLanguage == kAutoDetect,
                 copied: _copied,
+                speaking: _speaking,
+                onListen: () => _listen(state.result!.result.translatedText, state.result!.result.targetLanguage),
                 onCopy: () async {
                   await Clipboard.setData(ClipboardData(text: state.result!.result.translatedText));
                   if (!mounted) return;
@@ -267,11 +292,20 @@ class _LanguageDropdown extends StatelessWidget {
 }
 
 class _ResultCard extends StatelessWidget {
-  const _ResultCard({required this.response, required this.sourceIsAuto, required this.copied, required this.onCopy});
+  const _ResultCard({
+    required this.response,
+    required this.sourceIsAuto,
+    required this.copied,
+    required this.onCopy,
+    required this.speaking,
+    required this.onListen,
+  });
   final TranslateResponse response;
   final bool sourceIsAuto;
   final bool copied;
   final VoidCallback onCopy;
+  final bool speaking;
+  final VoidCallback onListen;
 
   @override
   Widget build(BuildContext context) {
@@ -323,6 +357,15 @@ class _ResultCard extends StatelessWidget {
                   onPressed: onCopy,
                   icon: Icon(copied ? Icons.check : Icons.copy),
                   label: Text(copied ? l10n.copied : l10n.copy),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  key: const Key('listen_button'),
+                  onPressed: speaking ? null : onListen,
+                  icon: speaking
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.volume_up),
+                  label: Text(l10n.listen),
                 ),
                 const Spacer(),
                 if (left != null) Text(l10n.quotaLeft(left), style: theme.textTheme.bodySmall),

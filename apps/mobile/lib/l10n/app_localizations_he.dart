@@ -145,4 +145,81 @@ class AppLocalizationsHe extends AppLocalizations {
 
   @override
   String get cancel => 'ביטול';
+
+  @override
+  String get talkTitle => 'שיחה';
+
+  @override
+  String get talkStart => 'התחלת שיחה';
+
+  @override
+  String get talkStop => 'סיום';
+
+  @override
+  String get talkIdleHint => 'דברו בשפה שלכם. הצד השני שומע בשפה שלו.';
+
+  @override
+  String get talkMyLanguage => 'אני מדבר/ת';
+
+  @override
+  String get talkTargetLanguage => 'הם מדברים';
+
+  @override
+  String get stateListening => 'מקשיב';
+
+  @override
+  String get stateTranslating => 'מתרגם';
+
+  @override
+  String get stateSpeaking => 'מדבר';
+
+  @override
+  String get stateConnecting => 'מתחבר';
+
+  @override
+  String get stateReconnecting => 'מתחבר מחדש…';
+
+  @override
+  String get stateEnded => 'הסתיים';
+
+  @override
+  String get micOn => 'המיקרופון פועל';
+
+  @override
+  String get micOff => 'המיקרופון כבוי';
+
+  @override
+  String get speakerOn => 'קול פועל';
+
+  @override
+  String get speakerOff => 'קול כבוי';
+
+  @override
+  String minutesUsed(int used, int limit) {
+    return 'נוצלו $used מתוך $limit דקות החודש';
+  }
+
+  @override
+  String minutesUsedUnlimited(int used) {
+    return 'נוצלו $used דקות החודש';
+  }
+
+  @override
+  String get permissionDenied =>
+      'הגישה למיקרופון נדחתה. אפשרו אותה בהגדרות המערכת כדי להשתמש בשיחה.';
+
+  @override
+  String get connectionLost => 'החיבור אבד.';
+
+  @override
+  String sessionEndedAfter(String duration) {
+    return 'השיחה הסתיימה אחרי $duration.';
+  }
+
+  @override
+  String get listen => 'השמעה';
+
+  @override
+  String get mockNotice =>
+      'שרת פיתוח: התמלולים והתרגומים הם ממלאי מקום, לא זיהוי דיבור.';
 }

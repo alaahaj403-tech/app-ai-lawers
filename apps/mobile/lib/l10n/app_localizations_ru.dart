@@ -149,4 +149,82 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cancel => 'Отмена';
+
+  @override
+  String get talkTitle => 'Разговор';
+
+  @override
+  String get talkStart => 'Начать разговор';
+
+  @override
+  String get talkStop => 'Завершить';
+
+  @override
+  String get talkIdleHint =>
+      'Говорите на своём языке. Собеседник слышит на своём.';
+
+  @override
+  String get talkMyLanguage => 'Я говорю';
+
+  @override
+  String get talkTargetLanguage => 'Они говорят';
+
+  @override
+  String get stateListening => 'Слушаю';
+
+  @override
+  String get stateTranslating => 'Перевожу';
+
+  @override
+  String get stateSpeaking => 'Говорю';
+
+  @override
+  String get stateConnecting => 'Подключение';
+
+  @override
+  String get stateReconnecting => 'Переподключение…';
+
+  @override
+  String get stateEnded => 'Завершено';
+
+  @override
+  String get micOn => 'Микрофон включён';
+
+  @override
+  String get micOff => 'Микрофон выключен';
+
+  @override
+  String get speakerOn => 'Голос включён';
+
+  @override
+  String get speakerOff => 'Голос выключен';
+
+  @override
+  String minutesUsed(int used, int limit) {
+    return 'Использовано $used из $limit минут в этом месяце';
+  }
+
+  @override
+  String minutesUsedUnlimited(int used) {
+    return 'Использовано $used минут в этом месяце';
+  }
+
+  @override
+  String get permissionDenied =>
+      'Доступ к микрофону запрещён. Разрешите его в настройках системы, чтобы пользоваться разговором.';
+
+  @override
+  String get connectionLost => 'Соединение потеряно.';
+
+  @override
+  String sessionEndedAfter(String duration) {
+    return 'Сеанс завершён через $duration.';
+  }
+
+  @override
+  String get listen => 'Прослушать';
+
+  @override
+  String get mockNotice =>
+      'Сервер разработки: транскрипты и переводы — заглушки, не распознавание речи.';
 }

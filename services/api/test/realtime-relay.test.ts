@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import type { RelayServerMessage } from '@voxeli/api-contracts';
+import { buildApp } from '../src/app.js';
 import type { BuiltApp } from '../src/app.js';
+import { loadEnv } from '../src/env.js';
 import { registerUser, startTestApp, truncateAll } from './helpers.js';
 
 let built: BuiltApp;
@@ -184,9 +186,10 @@ describe('Tier-2 relay', () => {
     const segmentIds = collected.messages
       .filter((m): m is Extract<RelayServerMessage, { type: 'segment' }> => m.type === 'segment')
       .map((m) => m.segmentId);
-    // The same segment is re-sent on resume; the ids repeat rather than new
-    // segments being invented.
-    expect(new Set(segmentIds).size).toBeLessThan(segmentIds.length);
+    // A resume on a socket that already saw the segment must not repeat it,
+    // and no segment may be invented.
+    expect(segmentIds.length).toBeGreaterThan(0);
+    expect(new Set(segmentIds).size).toBe(segmentIds.length);
   });
 
   it('refuses a missing, malformed or expired ticket', async () => {
@@ -222,5 +225,147 @@ describe('Tier-2 relay', () => {
       `select metrics from realtime_sessions where id = '${session.sessionId}'`,
     );
     expect((rows[0]?.metrics as { closeReason: string }).closeReason).toBe('quota_exhausted');
+  });
+});
+
+describe('Tier-2 relay reconnect', () => {
+  it('lets a client reattach with a fresh ticket, replays missed segments, and charges minutes once', async () => {
+    const env = loadEnv();
+    const short = await buildApp(env, process.env, { relayDetachGraceMs: 5_000 });
+    const address = await short.app.listen({ port: 0, host: '127.0.0.1' });
+    const wsBase = address.replace('http://', 'ws://');
+    try {
+      const u = await registerUser(short, 'reconnect@example.com');
+      const created = await short.app.inject({
+        method: 'POST',
+        url: '/v1/realtime/sessions',
+        headers: auth(u.tokens.accessToken),
+        payload: { kind: 'face_to_face', myLanguage: 'he', targetLanguage: 'en' },
+      });
+      const session = created.json() as { sessionId: string; relay: { ticket: string } };
+
+      // First connection: stream until a segment arrives, then drop the socket abruptly.
+      const firstSegments: string[] = [];
+      await new Promise<void>((resolve, reject) => {
+        const ws = new WebSocket(
+          `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(session.relay.ticket)}`,
+        );
+        const timer = setTimeout(() => reject(new Error('first leg timed out')), 15_000);
+        ws.on('message', (data: Buffer, isBinary: boolean) => {
+          if (isBinary) return;
+          const m = JSON.parse(data.toString('utf8')) as RelayServerMessage;
+          if (m.type === 'ready')
+            for (let i = 0; i < 12; i++) ws.send(audioFrame(), { binary: true });
+          if (m.type === 'segment') {
+            firstSegments.push(m.segmentId);
+            ws.terminate(); // simulate network loss: no stop, no close handshake
+          }
+        });
+        ws.on('close', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        ws.on('error', reject);
+      });
+      expect(firstSegments).toHaveLength(1);
+
+      // The session is still open server-side; a fresh ticket is issued.
+      const ticketRes = await short.app.inject({
+        method: 'POST',
+        url: `/v1/realtime/sessions/${session.sessionId}/ticket`,
+        headers: auth(u.tokens.accessToken),
+      });
+      expect(ticketRes.statusCode).toBe(200);
+      const newTicket = (ticketRes.json() as { relay: { ticket: string } }).relay.ticket;
+
+      // Second connection: resume from nothing → the missed segment is replayed, then stop.
+      const second: RelayServerMessage[] = [];
+      await new Promise<void>((resolve, reject) => {
+        const ws = new WebSocket(
+          `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(newTicket)}`,
+        );
+        const timer = setTimeout(() => reject(new Error('second leg timed out')), 15_000);
+        ws.on('message', (data: Buffer, isBinary: boolean) => {
+          if (isBinary) return;
+          const m = JSON.parse(data.toString('utf8')) as RelayServerMessage;
+          second.push(m);
+          if (m.type === 'ready') ws.send(JSON.stringify({ type: 'resume', lastSegmentId: null }));
+          if (m.type === 'segment') ws.send(JSON.stringify({ type: 'stop' }));
+        });
+        ws.on('close', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        ws.on('error', reject);
+      });
+      // Audio buffered before the drop kept flowing server-side, so more segments may
+      // exist; the replay must start with what was missed and never repeat an id.
+      const replayed = second
+        .filter((m) => m.type === 'segment')
+        .map((m) => (m.type === 'segment' ? m.segmentId : ''));
+      expect(replayed[0]).toBe(firstSegments[0]);
+      expect(new Set(replayed).size).toBe(replayed.length);
+      expect(second.some((m) => m.type === 'closed')).toBe(true);
+
+      const quota = await short.db.execute(
+        `select used from usage_quotas where user_id = '${u.user.id}' and dimension = 'realtime_minutes'`,
+      );
+      expect(quota[0]).toMatchObject({ used: 1 });
+      const rows = await short.db.execute(
+        `select metrics, ended_at from realtime_sessions where id = '${session.sessionId}'`,
+      );
+      expect(rows[0]?.ended_at).not.toBeNull();
+      expect((rows[0]?.metrics as { reconnects: number }).reconnects).toBe(1);
+
+      // After the session ended, no more tickets.
+      const late = await short.app.inject({
+        method: 'POST',
+        url: `/v1/realtime/sessions/${session.sessionId}/ticket`,
+        headers: auth(u.tokens.accessToken),
+      });
+      expect(late.statusCode).toBe(409);
+    } finally {
+      await short.close();
+    }
+  });
+
+  it('ends the session when nobody reattaches within the grace window', async () => {
+    const env = loadEnv();
+    const short = await buildApp(env, process.env, { relayDetachGraceMs: 300 });
+    const address = await short.app.listen({ port: 0, host: '127.0.0.1' });
+    const wsBase = address.replace('http://', 'ws://');
+    try {
+      const u = await registerUser(short, 'grace@example.com');
+      const created = await short.app.inject({
+        method: 'POST',
+        url: '/v1/realtime/sessions',
+        headers: auth(u.tokens.accessToken),
+        payload: { kind: 'live_subtitles', myLanguage: 'he', targetLanguage: 'en' },
+      });
+      const session = created.json() as { sessionId: string; relay: { ticket: string } };
+      await new Promise<void>((resolve, reject) => {
+        const ws = new WebSocket(
+          `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(session.relay.ticket)}`,
+        );
+        ws.on('message', (data: Buffer, isBinary: boolean) => {
+          if (
+            !isBinary &&
+            (JSON.parse(data.toString('utf8')) as RelayServerMessage).type === 'ready'
+          )
+            ws.terminate();
+        });
+        ws.on('close', () => resolve());
+        ws.on('error', reject);
+      });
+      await new Promise((r) => setTimeout(r, 900));
+      const rows = await short.db.execute(
+        `select metrics, ended_at from realtime_sessions where id = '${session.sessionId}'`,
+      );
+      expect(rows[0]?.ended_at).not.toBeNull();
+      expect((rows[0]?.metrics as { closeReason: string }).closeReason).toBe('connection_lost');
+      expect(short.relayRegistry.size).toBe(0);
+    } finally {
+      await short.close();
+    }
   });
 });

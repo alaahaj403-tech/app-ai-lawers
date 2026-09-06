@@ -19,6 +19,31 @@ export interface RelayRoutesDeps {
   quota: QuotaService;
   tokens: TokenService;
   modelConfig: ModelConfig;
+  detachGraceMs?: number;
+  registry: RelayRegistry;
+}
+
+/**
+ * Live relay sessions on this instance, so a reconnecting client can reattach
+ * to the session that is still running for it. Single-instance by design for
+ * now; a multi-instance deployment needs sticky routing on the session id
+ * (documented in TECH_DEBT).
+ */
+export class RelayRegistry {
+  private readonly live = new Map<string, RelaySession>();
+  get(sessionId: string): RelaySession | undefined {
+    const s = this.live.get(sessionId);
+    return s?.isLive ? s : undefined;
+  }
+  set(sessionId: string, session: RelaySession): void {
+    this.live.set(sessionId, session);
+  }
+  delete(sessionId: string): void {
+    this.live.delete(sessionId);
+  }
+  get size(): number {
+    return this.live.size;
+  }
 }
 
 const querySchema = z.object({ ticket: z.string().min(20).max(2000) });
@@ -66,6 +91,8 @@ function adapt(socket: RawSocket): RelaySocket {
  * session, and the session row is re-checked for ownership here.
  */
 export const relayRoutes: FastifyPluginAsync<RelayRoutesDeps> = async (app, deps) => {
+  const { registry } = deps;
+
   app.get('/stream', { websocket: true }, (socket, req) => {
     const relaySocket = adapt(socket);
 
@@ -114,6 +141,12 @@ export const relayRoutes: FastifyPluginAsync<RelayRoutesDeps> = async (app, deps
         return;
       }
 
+      const existing = registry.get(session.id);
+      if (existing) {
+        existing.attach(relaySocket);
+        return;
+      }
+
       const relay = new RelaySession(
         relaySocket,
         {
@@ -134,8 +167,13 @@ export const relayRoutes: FastifyPluginAsync<RelayRoutesDeps> = async (app, deps
           transcription: deps.transcription,
           quota: deps.quota,
           log: req.log,
+          ...(deps.detachGraceMs !== undefined ? { detachGraceMs: deps.detachGraceMs } : {}),
+          onFinished: (id) => {
+            registry.delete(id);
+          },
         },
       );
+      registry.set(session.id, relay);
       await relay.run();
     })();
   });
