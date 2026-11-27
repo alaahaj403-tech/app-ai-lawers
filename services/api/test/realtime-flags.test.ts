@@ -125,8 +125,15 @@ describe('realtime sessions', () => {
     expect(rec.json().error.code).toBe('UNSUPPORTED_PLATFORM_CAPABILITY');
   });
 
-  it('closes a session with metrics, charges minutes once, and enforces ownership', async () => {
-    const a = await registerUser(built, 'ra@example.com');
+  it('closes a tier-1 session with metrics, charges minutes once, and enforces ownership', async () => {
+    const reg = await registerUser(built, 'ra@example.com');
+    await setPlan(built, reg.user.id, 'pro');
+    const login = await built.app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'ra@example.com', password: 'correct-horse-battery-staple' },
+    });
+    const a = { tokens: login.json().tokens as { accessToken: string } };
     const b = await registerUser(built, 'rb@example.com');
     const created = await built.app.inject({
       method: 'POST',
@@ -134,6 +141,7 @@ describe('realtime sessions', () => {
       headers: auth(a.tokens.accessToken),
       payload: { kind: 'live_subtitles', myLanguage: 'auto', targetLanguage: 'he' },
     });
+    expect(created.json().tier).toBe('tier1_s2s');
     const id = created.json().sessionId as string;
     const foreign = await built.app.inject({
       method: 'POST',
@@ -162,7 +170,40 @@ describe('realtime sessions', () => {
       headers: auth(a.tokens.accessToken),
       payload: { kind: 'live_subtitles', myLanguage: 'auto', targetLanguage: 'he' },
     });
-    expect(next.json().quota).toEqual({ dimension: 'realtime_minutes', used: 2, limit: 10 });
+    expect(next.json().quota).toMatchObject({ dimension: 'realtime_minutes', used: 2 });
+  });
+
+  it('refuses client-reported minutes for a relay session: the server meters and closes it', async () => {
+    const u = await registerUser(built, 'relaymetrics@example.com');
+    const created = await built.app.inject({
+      method: 'POST',
+      url: '/v1/realtime/sessions',
+      headers: auth(u.tokens.accessToken),
+      payload: { kind: 'live_subtitles', myLanguage: 'auto', targetLanguage: 'he' },
+    });
+    expect(created.json().tier).toBe('tier2_streaming');
+    const id = created.json().sessionId as string;
+
+    const report = await built.app.inject({
+      method: 'POST',
+      url: `/v1/realtime/sessions/${id}/metrics`,
+      headers: auth(u.tokens.accessToken),
+      payload: { durationSeconds: 600 },
+    });
+    expect(report.statusCode).toBe(409);
+    expect(report.json().error.code).toBe('CONFLICT');
+
+    // Nothing was charged and the session stays open, so the relay can still reattach.
+    const quota = await built.db.execute(
+      `select used from usage_quotas where user_id = '${u.user.id}' and dimension = 'realtime_minutes'`,
+    );
+    expect(quota.length === 0 || (quota[0] as { used: number }).used === 0).toBe(true);
+    const ticket = await built.app.inject({
+      method: 'POST',
+      url: `/v1/realtime/sessions/${id}/ticket`,
+      headers: auth(u.tokens.accessToken),
+    });
+    expect(ticket.statusCode).toBe(200);
   });
 });
 

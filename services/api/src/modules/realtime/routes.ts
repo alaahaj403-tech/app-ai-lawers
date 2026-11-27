@@ -170,6 +170,11 @@ export const realtimeRoutes: FastifyPluginAsync<RealtimeRoutesDeps> = async (app
       .limit(1);
     if (!session) throw failures.notFound('Session not found');
     if (session.endedAt) return { ok: true, alreadyClosed: true };
+    // The relay observes Tier-2 media, charges minutes as they happen and closes
+    // the row itself. Accepting a client duration here would bill those minutes
+    // twice and end a session the relay may still reattach to.
+    if (session.tier === 'tier2_streaming')
+      throw failures.conflict('Relay sessions are metered and closed by the server');
 
     const minutes = Math.ceil(body.durationSeconds / 60);
     const { sessionId: _sid, ...metrics } = body;
