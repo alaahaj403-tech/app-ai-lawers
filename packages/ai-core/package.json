@@ -21,7 +21,7 @@
     "@voxeli/config": "workspace:*",
     "@voxeli/domain": "workspace:*",
     "openai": "^7.10.0",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

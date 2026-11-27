@@ -2,7 +2,7 @@
   "name": "voxeli",
   "private": true,
   "version": "0.1.0",
-  "description": "Voxeli \u2014 real-time AI voice translator platform (monorepo)",
+  "description": "Voxeli — real-time AI voice translator platform (monorepo)",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22.12.0"
@@ -30,6 +30,7 @@
     "turbo": "^2.10.12",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0",
+    "vite": "^8.4.0",
     "vitest": "^4.0.0"
   },
   "pnpm": {
