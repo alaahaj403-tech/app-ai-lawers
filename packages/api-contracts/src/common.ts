@@ -5,7 +5,7 @@ export const languageCodeSchema = z
   .string()
   .min(2)
   .max(10)
-  .refine(isSupportedLanguage, { message: 'Unsupported language code' });
+  .refine(isSupportedLanguage, { error: 'Unsupported language code' });
 
 export const sourceLanguageSchema = z.union([z.literal('auto'), languageCodeSchema]);
 
