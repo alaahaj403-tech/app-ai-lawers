@@ -1,0 +1,29 @@
+# Weekly update PRs, so advisories are patched before the CI audit has to fail on them.
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm workspace (root pnpm-lock.yaml)
+    directory: /
+    schedule: { interval: weekly, day: monday, time: '06:00', timezone: Asia/Jerusalem }
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pub # Flutter app
+    directory: /apps/mobile
+    schedule: { interval: weekly, day: monday, time: '06:00', timezone: Asia/Jerusalem }
+    open-pull-requests-limit: 3
+    groups:
+      pub-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories: [/services/api, /apps/web]
+    schedule: { interval: monthly }
