@@ -27,3 +27,8 @@ updates:
   - package-ecosystem: docker
     directories: [/services/api, /apps/web]
     schedule: { interval: monthly }
+    ignore:
+      # A Node major is a planned runtime upgrade: Dockerfiles, .nvmrc, `engines` and CI
+      # move together (Node 25+ also dropped corepack, which the Dockerfiles use).
+      - dependency-name: node
+        update-types: [version-update:semver-major]
