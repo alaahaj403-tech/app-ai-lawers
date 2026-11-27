@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
@@ -29,6 +30,20 @@ import { TranslationRepository } from './modules/translation/repository.js';
 import { translationRoutes } from './modules/translation/routes.js';
 import { QuotaService } from './modules/usage/quota.js';
 import { DbUsageRecorder } from './modules/usage/recorder.js';
+
+/**
+ * pino-pretty is a dev dependency, so it is absent from the production image.
+ * Running that image with NODE_ENV=development (the CI smoke test, a local
+ * `docker run`) must fall back to JSON logs instead of crashing on boot.
+ */
+function isPrettyLoggerInstalled(): boolean {
+  try {
+    createRequire(import.meta.url).resolve('pino-pretty');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface BuiltApp {
   app: FastifyInstance;
@@ -63,7 +78,7 @@ export async function buildApp(
         ],
         censor: '[redacted]',
       },
-      ...(env.NODE_ENV === 'development'
+      ...(env.NODE_ENV === 'development' && isPrettyLoggerInstalled()
         ? { transport: { target: 'pino-pretty', options: { colorize: true } } }
         : {}),
     },
