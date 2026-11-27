@@ -1,0 +1,45 @@
+import 'dart:math';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'core/auth/token_store.dart';
+import 'core/config/server_settings.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import 'core/audio/audio_capture.dart';
+import 'core/audio/speech_player.dart';
+import 'core/network/api_client.dart';
+import 'features/talk/relay_client.dart';
+import 'features/translate/translate_repository.dart';
+
+final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
+
+/// Rebuilds whenever the server URL changes, so a tester can retarget the app.
+final apiClientProvider = Provider<ApiClient>(
+  (ref) => ApiClient(baseUrl: ref.watch(serverUrlProvider), tokens: ref.watch(tokenStoreProvider)),
+);
+
+final translateRepositoryProvider =
+    Provider<TranslateRepository>((ref) => ApiTranslateRepository(ref.watch(apiClientProvider)));
+
+/// RFC 4122 v4 UUID without an extra dependency.
+String _uuidV4() {
+  final rnd = Random.secure();
+  final b = List<int>.generate(16, (_) => rnd.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  String h(int i) => b[i].toRadixString(16).padLeft(2, '0');
+  final s = List.generate(16, h).join();
+  return '${s.substring(0, 8)}-${s.substring(8, 12)}-${s.substring(12, 16)}-${s.substring(16, 20)}-${s.substring(20)}';
+}
+
+final uuidProvider = Provider<String Function()>((ref) => _uuidV4);
+
+/// Device audio in/out. Overridden with fakes in tests and previews.
+final audioCaptureProvider = Provider<AudioCapture>((ref) => RecorderAudioCapture());
+final speechPlayerProvider = Provider<SpeechPlayer>((ref) {
+  final player = AudioplayersSpeechPlayer();
+  ref.onDispose(player.dispose);
+  return player;
+});
+final channelFactoryProvider = Provider<ChannelFactory>((ref) => WebSocketChannel.connect);

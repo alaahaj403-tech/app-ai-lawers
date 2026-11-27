@@ -1,0 +1,68 @@
+# Reference production topology for a single host or a small VM. For managed
+# platforms (Fly.io, Railway, Render, Cloud Run) use the same images with the
+# platform's secret store; see docs/DEPLOYMENT.md.
+services:
+  api:
+    image: ghcr.io/alaahaj403-tech/voxeli-api:${VOXELI_VERSION:-latest}
+    build: { context: .., dockerfile: services/api/Dockerfile }
+    env_file: [../services/api/.env]
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_started }
+    ports: ['4000:4000']
+    restart: unless-stopped
+
+  # One-shot release step: apply migrations before the new API version serves traffic.
+  migrate:
+    image: ghcr.io/alaahaj403-tech/voxeli-api:${VOXELI_VERSION:-latest}
+    env_file: [../services/api/.env]
+    command: ['node', 'dist/db/migrate.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+
+  web:
+    image: ghcr.io/alaahaj403-tech/voxeli-web:${VOXELI_VERSION:-latest}
+    build: { context: .., dockerfile: apps/web/Dockerfile }
+    environment:
+      API_URL: http://api:4000
+      COOKIE_SECURE: 'true'
+    depends_on: [api]
+    ports: ['3000:3000']
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: voxeli
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: voxeli
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U voxeli']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        'redis-server',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+        '--maxmemory',
+        '128mb',
+        '--maxmemory-policy',
+        'allkeys-lru',
+      ]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
