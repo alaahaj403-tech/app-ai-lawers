@@ -100,6 +100,7 @@ jobs:
           context: .
           file: services/api/Dockerfile
           push: false
+          load: true
           tags: voxeli-api:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -109,6 +110,7 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: false
+          load: true
           tags: voxeli-web:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
