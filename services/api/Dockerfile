@@ -2,7 +2,7 @@
 # Voxeli API — multi-stage build. Produces a small runtime image that contains
 # only the API's production dependencies and compiled output.
 
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /repo
@@ -31,7 +31,7 @@ RUN pnpm -r --filter './packages/*' build && pnpm --filter @voxeli/api build
 RUN pnpm --filter @voxeli/api deploy --prod --legacy /out
 
 # ---- runtime -------------------------------------------------------------------
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=4000 HOST=0.0.0.0
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/* \
