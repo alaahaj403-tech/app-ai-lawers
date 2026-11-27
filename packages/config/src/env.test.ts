@@ -35,7 +35,7 @@ describe('validateServerEnv', () => {
     expect(r.ok).toBe(false);
   });
   it('rejects a key pasted onto an existing sk- prefix, without echoing it', () => {
-    const r = validateServerEnv({ ...base, OPENAI_API_KEY: 'sk-sk-proj-abc123' });
+    const r = validateServerEnv({ ...base, OPENAI_API_KEY: 'sk-sk-proj-abc123' }); // gitleaks:allow — fake key shape for validation tests
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.problems.join('\n')).toMatch(/OPENAI_API_KEY/);
@@ -43,16 +43,16 @@ describe('validateServerEnv', () => {
     }
   });
   it('rejects a key containing whitespace', () => {
-    const r = validateServerEnv({ ...base, OPENAI_API_KEY: 'sk-proj-abc 123' });
+    const r = validateServerEnv({ ...base, OPENAI_API_KEY: 'sk-proj-abc 123' }); // gitleaks:allow — fake key shape for validation tests
     expect(r.ok).toBe(false);
   });
 });
 
 describe('validateAIEnv', () => {
   it('does not require DATABASE_URL or JWT_SECRET', () => {
-    const r = validateAIEnv({ OPENAI_API_KEY: 'sk-proj-abc123' });
+    const r = validateAIEnv({ OPENAI_API_KEY: 'sk-proj-abc123' }); // gitleaks:allow — fake key shape for validation tests
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.env.OPENAI_API_KEY).toBe('sk-proj-abc123');
+    if (r.ok) expect(r.env.OPENAI_API_KEY).toBe('sk-proj-abc123'); // gitleaks:allow — fake key shape for validation tests
   });
   it('accepts an empty environment and falls back to development', () => {
     const r = validateAIEnv({});
@@ -62,10 +62,10 @@ describe('validateAIEnv', () => {
   it('applies the same production rules as the server schema', () => {
     expect(validateAIEnv({ NODE_ENV: 'production' }).ok).toBe(false);
     expect(validateAIEnv({ NODE_ENV: 'production', AI_PROVIDER: 'mock' }).ok).toBe(false);
-    expect(validateAIEnv({ NODE_ENV: 'production', OPENAI_API_KEY: 'sk-proj-abc' }).ok).toBe(true);
+    expect(validateAIEnv({ NODE_ENV: 'production', OPENAI_API_KEY: 'sk-proj-abc' }).ok).toBe(true); // gitleaks:allow — fake key shape for validation tests
   });
   it('applies the same credential guard', () => {
-    expect(validateAIEnv({ OPENAI_API_KEY: 'sk-sk-proj-abc' }).ok).toBe(false);
+    expect(validateAIEnv({ OPENAI_API_KEY: 'sk-sk-proj-abc' }).ok).toBe(false); // gitleaks:allow — fake key shape for validation tests
   });
   it('treats an empty key as absent so a test run cannot reach a live provider', () => {
     const r = validateAIEnv({ OPENAI_API_KEY: '' });
