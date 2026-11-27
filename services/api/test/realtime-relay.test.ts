@@ -242,7 +242,7 @@ describe('Tier-2 relay reconnect', () => {
         headers: auth(u.tokens.accessToken),
         payload: { kind: 'face_to_face', myLanguage: 'he', targetLanguage: 'en' },
       });
-      const session = created.json() as { sessionId: string; relay: { ticket: string } };
+      const session = created.json();
 
       // First connection: stream until a segment arrives, then drop the socket abruptly.
       const firstSegments: string[] = [];
@@ -250,7 +250,9 @@ describe('Tier-2 relay reconnect', () => {
         const ws = new WebSocket(
           `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(session.relay.ticket)}`,
         );
-        const timer = setTimeout(() => reject(new Error('first leg timed out')), 15_000);
+        const timer = setTimeout(() => {
+          reject(new Error('first leg timed out'));
+        }, 15_000);
         ws.on('message', (data: Buffer, isBinary: boolean) => {
           if (isBinary) return;
           const m = JSON.parse(data.toString('utf8')) as RelayServerMessage;
@@ -276,7 +278,7 @@ describe('Tier-2 relay reconnect', () => {
         headers: auth(u.tokens.accessToken),
       });
       expect(ticketRes.statusCode).toBe(200);
-      const newTicket = (ticketRes.json() as { relay: { ticket: string } }).relay.ticket;
+      const newTicket = ticketRes.json().relay.ticket;
 
       // Second connection: resume from nothing → the missed segment is replayed, then stop.
       const second: RelayServerMessage[] = [];
@@ -284,7 +286,9 @@ describe('Tier-2 relay reconnect', () => {
         const ws = new WebSocket(
           `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(newTicket)}`,
         );
-        const timer = setTimeout(() => reject(new Error('second leg timed out')), 15_000);
+        const timer = setTimeout(() => {
+          reject(new Error('second leg timed out'));
+        }, 15_000);
         ws.on('message', (data: Buffer, isBinary: boolean) => {
           if (isBinary) return;
           const m = JSON.parse(data.toString('utf8')) as RelayServerMessage;
@@ -342,7 +346,7 @@ describe('Tier-2 relay reconnect', () => {
         headers: auth(u.tokens.accessToken),
         payload: { kind: 'live_subtitles', myLanguage: 'he', targetLanguage: 'en' },
       });
-      const session = created.json() as { sessionId: string; relay: { ticket: string } };
+      const session = created.json();
       await new Promise<void>((resolve, reject) => {
         const ws = new WebSocket(
           `${wsBase}/v1/realtime/stream?ticket=${encodeURIComponent(session.relay.ticket)}`,
@@ -354,7 +358,9 @@ describe('Tier-2 relay reconnect', () => {
           )
             ws.terminate();
         });
-        ws.on('close', () => resolve());
+        ws.on('close', () => {
+          resolve();
+        });
         ws.on('error', reject);
       });
       await new Promise((r) => setTimeout(r, 900));
