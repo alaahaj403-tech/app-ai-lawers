@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import Fastify from 'fastify';
+import Fastify, { LogController } from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -85,7 +85,7 @@ export async function buildApp(
     trustProxy: true,
     bodyLimit: 64 * 1024,
     requestIdHeader: false,
-    disableRequestLogging: env.NODE_ENV === 'test',
+    logController: new LogController({ disableRequestLogging: env.NODE_ENV === 'test' }),
   });
 
   const { db, close: closeDb } = createDb(env.DATABASE_URL);

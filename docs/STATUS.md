@@ -1,6 +1,13 @@
 # Engineering Status
 
-_Last updated: 2026-09-06 (Talk) · Branch `claude/voxeli-branding-strategy-rf6fpg`_
+_Last updated: 2026-11-27 (merged to `main`; relay metering fix) · Branch `main`_
+
+## 2026-11-27 update
+
+- Both feature branches were merged into `main` (#6). CI on GitHub Actions is green for all jobs: Node lint/typecheck/test/build, Flutter analyze/test/**Android debug APK build**, Docker images + API smoke boot, dependency audit + secret scan.
+- **Defect fixed (P1, billing):** `POST /v1/realtime/sessions/:id/metrics` charged client-reported minutes on Tier-2 relay sessions too, so relay minutes were billed twice and the session row was closed while the relay could still reattach. Relay sessions now get `409 CONFLICT` from that route; 1 new integration test (43 API tests total).
+- Fixed in CI/boot: built images were not loaded into Docker for the smoke test; the API crashed on boot when run from the production image with `NODE_ENV=development` (missing `pino-pretty`); Fastify FSTDEP023 deprecation removed.
+- Automatic Vercel Git deployments are disabled (`vercel.json`) — the Vercel project has no Root Directory and the web app has no API to talk to yet.
 
 ## Current milestone
 
@@ -41,9 +48,9 @@ _Last updated: 2026-09-06 (Talk) · Branch `claude/voxeli-branding-strategy-rf6f
 - OpenAI adapters (`gpt-5.6-*`, `gpt-realtime-translate`, `gpt-live-transcribe`) — code matches the official docs fetched 2026-09-04; **not executed against the live API** (no credential in this environment).
 - Web/mobile ↔ API end-to-end in a browser/device — verified via HTTP-level integration tests and builds, not by a manual UI session.
 
-## Android build (in progress)
+## Android build
 
-`flutter build apk --debug` was attempted in this environment after installing the Android SDK. First two attempts: FAILED_VALIDATION — `flutter_secure_storage` 11 requires platform API 37, which is only in the canary SDK channel; installed `platforms;android-37.0` and set `compileSdk = 37`. Result of the third attempt is recorded in the next STATUS update; CI's `mobile` job also runs the build.
+IMPLEMENTED_AND_VERIFIED in CI: the `mobile` job runs `flutter build apk --debug` and passed on the merge into `main` (2026-11-27). Requires `platforms;android-37.0` because `flutter_secure_storage` 11 compiles against API 37 (TECH_DEBT #9).
 
 ## Blocked (BLOCKED_EXTERNAL_DEPENDENCY)
 
@@ -57,7 +64,7 @@ _Last updated: 2026-09-06 (Talk) · Branch `claude/voxeli-branding-strategy-rf6f
 
 ## Known defects
 
-None open at P0/P1. See `docs/TECH_DEBT.md` for accepted debt (client-reported realtime minutes, duplicated language registry, unprobed Tier-1 language coverage, missing model prices, no email verification yet).
+None open at P0/P1 (the relay double-charge found on 2026-11-27 is fixed). See `docs/TECH_DEBT.md` for accepted debt (client-reported Tier-1 minutes, duplicated language registry, unprobed Tier-1 language coverage, missing model prices, cleartext on Android before store release).
 
 ## Architecture decisions
 
