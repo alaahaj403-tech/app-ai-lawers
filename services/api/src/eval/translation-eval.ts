@@ -1,11 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { AIUsageRecord } from '@voxeli/ai-core';
-import { REGRESSION_CASES, extractProtectedEntities } from '@voxeli/translation-core';
+import { REGRESSION_CASES, extractProtectedEntities, scriptOf } from '@voxeli/translation-core';
 import type { RegressionCase } from '@voxeli/translation-core';
 import type { Plan } from '@voxeli/domain';
 import { createAIContainer } from '../ai/container.js';
-import { loadEnv } from '../env.js';
+import { loadAIEnv } from '../env.js';
 
 /**
  * AI evaluation harness (spec §65). Runs the controlled regression corpus
@@ -15,9 +15,14 @@ import { loadEnv } from '../env.js';
  * It does NOT score translation "quality" with a number — we do not invent
  * metrics. What it measures objectively:
  *   - entity preservation (numbers, money, dates, phones, URLs, IDs)
+ *   - source-script leakage (words left in the source script)
  *   - whether a repair pass was needed
  *   - which slot answered and whether routing degraded
  *   - latency and provider-reported token usage / estimated cost
+ *
+ * Reads only the AI part of the environment (OPENAI_API_KEY / AI_PROVIDER) —
+ * it opens no database and signs no tokens. Without a key the mock provider
+ * answers and the run measures plumbing, not translation quality.
  *
  * Usage:
  *   pnpm --filter @voxeli/api eval                 # all cases
@@ -31,6 +36,8 @@ interface CaseResult {
   ok: boolean;
   missingEntities: string[];
   integrityViolations: string[];
+  /** Source-script words left in the output. Empty for same-script pairs. */
+  scriptLeaks: string[];
   repaired: boolean;
   slot: string;
   degraded: boolean;
@@ -65,7 +72,7 @@ function parseArgs(argv: readonly string[]): Args {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const env = loadEnv();
+  const env = loadAIEnv();
 
   const usage: AIUsageRecord[] = [];
   const ai = createAIContainer(env, { record: (r) => void usage.push(r) });
@@ -114,13 +121,21 @@ async function main(): Promise<void> {
           !outcome.result.translatedText.includes(m),
       );
 
+      // Reported by the service after its repair pass, so this is what a user
+      // would actually have received — not a recomputation of the first draft.
+      const scriptLeaks = [...outcome.scriptLeaks];
+
       results.push({
         id: testCase.id,
         category: testCase.category,
         languagePair: `${testCase.sourceLanguage}→${testCase.targetLanguage}`,
-        ok: missing.length === 0 && outcome.result.integrity.violations.length === 0,
+        ok:
+          missing.length === 0 &&
+          outcome.result.integrity.violations.length === 0 &&
+          scriptLeaks.length === 0,
         missingEntities: missing,
         integrityViolations: [...outcome.result.integrity.violations],
+        scriptLeaks,
         repaired: outcome.repaired,
         slot: outcome.routing.slot,
         degraded: outcome.routing.degraded,
@@ -135,6 +150,7 @@ async function main(): Promise<void> {
         ok: false,
         missingEntities: [...testCase.mustPreserve],
         integrityViolations: [],
+        scriptLeaks: [],
         repaired: false,
         slot: '-',
         degraded: false,
@@ -155,8 +171,8 @@ async function main(): Promise<void> {
 
   const failed = results.filter((r) => !r.ok);
   const latencies = results.map((r) => r.latencyMs).sort((a, b) => a - b);
-  const p50 = latencies[Math.floor(latencies.length * 0.5)] ?? 0;
-  const p95 = latencies[Math.min(latencies.length - 1, Math.floor(latencies.length * 0.95))] ?? 0;
+  const p50 = percentile(latencies, 0.5);
+  const p95 = percentile(latencies, 0.95);
   const inputTokens = usage.reduce((n, u) => n + u.inputUnits, 0);
   const outputTokens = usage.reduce((n, u) => n + u.outputUnits, 0);
   const costed = usage.filter((u) => u.estimatedCostUsd !== null);
@@ -166,6 +182,13 @@ async function main(): Promise<void> {
   console.log(`  passed         : ${results.length - failed.length}/${results.length}`);
   console.log(`  repaired       : ${results.filter((r) => r.repaired).length}`);
   console.log(`  degraded route : ${results.filter((r) => r.degraded).length}`);
+  // Only cross-script pairs are checkable, so report the denominator too —
+  // "0 leaks" over 0 checked outputs would otherwise read as a clean bill.
+  const leakCheckable = cases.filter(
+    (c) => scriptOf(c.sourceLanguage) !== scriptOf(c.targetLanguage),
+  ).length;
+  const leaking = results.filter((r) => r.scriptLeaks.length > 0).length;
+  console.log(`  script leaks   : ${leaking} of ${leakCheckable} cross-script cases checked`);
   console.log(`  latency        : p50 ${p50}ms · p95 ${p95}ms`);
   console.log(
     `  provider calls : ${usage.length} (${inputTokens} in / ${outputTokens} out tokens)`,
@@ -176,9 +199,14 @@ async function main(): Promise<void> {
   if (failed.length > 0) {
     console.log(`\nFailures`);
     for (const f of failed) {
-      console.log(
-        `  ${f.id}: ${f.error ?? `missing ${f.missingEntities.join(', ')} ${f.integrityViolations.join(', ')}`}`,
-      );
+      const reasons = [
+        f.missingEntities.length ? `missing ${f.missingEntities.join(', ')}` : '',
+        f.integrityViolations.length ? `integrity ${f.integrityViolations.join(', ')}` : '',
+        f.scriptLeaks.length
+          ? `source-script words left in output: ${f.scriptLeaks.join(', ')}`
+          : '',
+      ].filter(Boolean);
+      console.log(`  ${f.id}: ${f.error ?? reasons.join(' · ')}`);
     }
   }
 
@@ -209,6 +237,17 @@ async function main(): Promise<void> {
   }
 
   process.exit(failed.length === 0 ? 0 : 1);
+}
+
+/**
+ * Nearest-rank percentile: the smallest value at or above the given fraction of
+ * the sorted sample. `floor(n * p)` is off by one for exact ranks — with 10
+ * samples it reports the 6th as the median rather than the 5th.
+ */
+function percentile(sorted: readonly number[], fraction: number): number {
+  if (sorted.length === 0) return 0;
+  const rank = Math.max(1, Math.ceil(fraction * sorted.length));
+  return sorted[Math.min(rank, sorted.length) - 1] ?? 0;
 }
 
 main().catch((error: unknown) => {

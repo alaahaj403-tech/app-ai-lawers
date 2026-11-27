@@ -6,3 +6,4 @@ pnpm-lock.yaml
 apps/mobile
 drizzle/meta
 apps/web/next-env.d.ts
+eval.json

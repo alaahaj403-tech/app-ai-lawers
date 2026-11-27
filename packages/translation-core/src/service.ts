@@ -3,6 +3,7 @@ import { failures, getLanguage } from '@voxeli/domain';
 import type { Plan, TranslationRequest, TranslationResult } from '@voxeli/domain';
 import { buildTranslationPrompt } from './prompt.js';
 import { extractProtectedEntities, verifyIntegrity } from './protected-entities.js';
+import { detectScriptLeaks } from './script-leaks.js';
 
 export interface TranslateOptions {
   readonly plan: Plan;
@@ -16,15 +17,21 @@ export interface TranslationOutcome {
     RoutedTranslation,
     'slot' | 'provider' | 'model' | 'degraded' | 'latencyMs' | 'attempts'
   >;
-  /** True when a second pass was needed to repair entity corruption. */
+  /**
+   * True when a second pass was needed — and helped — after the first output
+   * corrupted a protected entity or left words in the source script.
+   */
   readonly repaired: boolean;
+  /** Source-script words still present in the returned text. Empty when clean. */
+  readonly scriptLeaks: readonly string[];
 }
 
 /**
  * TranslationService — the application-level translation use case.
  *
  * Flow: extract protected entities → build structured prompt → route via
- * AIModelRouter → verify integrity → (one repair pass if violated) → result.
+ * AIModelRouter → verify integrity and source-script leakage → (one repair pass
+ * if either is violated) → result.
  * Provider-specific structures never leave this layer.
  */
 export class TranslationService {
@@ -39,12 +46,25 @@ export class TranslationService {
     const entities = extractProtectedEntities(req.text);
     const feature = opts.feature ?? 'translate.text';
 
-    const first = await this.run(req, entities, opts, ctx, feature, undefined);
+    const first = await this.run(req, entities, opts, ctx, feature, undefined, undefined);
     let routed = first;
     let integrity = verifyIntegrity(entities, routed.output.translatedText);
+
+    // With sourceLanguage 'auto' the script is unknown until the model reports
+    // what it detected; that report is only used to choose which script to scan
+    // for, so a wrong value weakens the check rather than corrupting output.
+    const sourceForScript =
+      req.sourceLanguage === 'auto' ? first.output.detectedLanguage : req.sourceLanguage;
+    const leaksOf = (text: string): string[] =>
+      detectScriptLeaks(text, {
+        sourceLanguage: sourceForScript,
+        targetLanguage: req.targetLanguage,
+      });
+
+    let scriptLeaks = leaksOf(routed.output.translatedText);
     let repaired = false;
 
-    if (integrity.violations.length > 0) {
+    if (integrity.violations.length > 0 || scriptLeaks.length > 0) {
       const second = await this.run(
         req,
         entities,
@@ -52,11 +72,22 @@ export class TranslationService {
         ctx,
         `${feature}.repair`,
         integrity.violations,
+        scriptLeaks,
       );
       const secondIntegrity = verifyIntegrity(entities, second.output.translatedText);
-      if (secondIntegrity.violations.length < integrity.violations.length) {
+      const secondLeaks = leaksOf(second.output.translatedText);
+      // Take the retry only if it is strictly better overall and worse on
+      // neither axis — trading a corrupted number for a clean script is a loss.
+      const before = integrity.violations.length + scriptLeaks.length;
+      const after = secondIntegrity.violations.length + secondLeaks.length;
+      if (
+        after < before &&
+        secondIntegrity.violations.length <= integrity.violations.length &&
+        secondLeaks.length <= scriptLeaks.length
+      ) {
         routed = second;
         integrity = secondIntegrity;
+        scriptLeaks = secondLeaks;
         repaired = true;
       }
     }
@@ -88,6 +119,7 @@ export class TranslationService {
         attempts: first.attempts + (routed === first ? 0 : routed.attempts),
       },
       repaired,
+      scriptLeaks,
     };
   }
 
@@ -98,12 +130,12 @@ export class TranslationService {
     ctx: CallContext,
     feature: string,
     repairViolations: readonly string[] | undefined,
+    repairScriptLeaks: readonly string[] | undefined,
   ) {
-    const prompt = buildTranslationPrompt(
-      req,
-      entities,
-      repairViolations ? { repairViolations } : {},
-    );
+    const prompt = buildTranslationPrompt(req, entities, {
+      ...(repairViolations && repairViolations.length > 0 ? { repairViolations } : {}),
+      ...(repairScriptLeaks && repairScriptLeaks.length > 0 ? { repairScriptLeaks } : {}),
+    });
     return this.router.translate(
       {
         input: {
