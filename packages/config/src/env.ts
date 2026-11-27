@@ -9,11 +9,10 @@ const openAIKeySchema = z
   .string()
   .min(1)
   .refine((v) => !/\s/u.test(v), {
-    message: 'must not contain whitespace (check for a wrapped or truncated paste)',
+    error: 'must not contain whitespace (check for a wrapped or truncated paste)',
   })
   .refine((v) => !v.startsWith('sk-sk-'), {
-    message:
-      "must not start with a doubled 'sk-' prefix (the key was pasted onto an existing 'sk-')",
+    error: "must not start with a doubled 'sk-' prefix (the key was pasted onto an existing 'sk-')",
   });
 
 /**

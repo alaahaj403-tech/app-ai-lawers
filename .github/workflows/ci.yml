@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for GITHUB_TOKEN: every job only reads the repository.
+permissions:
+  contents: read
+
 jobs:
   node:
     name: Lint · Typecheck · Test · Build (Node)
@@ -52,6 +56,9 @@ jobs:
     name: Dependency audit · secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read # gitleaks lists the PR's commits
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -59,11 +66,15 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=high || echo "::warning::audit reported findings — review before release"
+      # A high or critical advisory fails the build; lower severities are reported in the log.
+      - name: Dependency audit (fails on high or critical)
+        run: pnpm audit --audit-level=high
       - name: Gitleaks secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The token is read-only; findings fail the job and are uploaded as a SARIF artifact.
+          GITLEAKS_ENABLE_COMMENTS: false
 
   mobile:
     name: Flutter analyze · test
