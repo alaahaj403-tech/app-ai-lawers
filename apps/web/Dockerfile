@@ -2,7 +2,7 @@
 # Voxeli web — Next.js standalone output behind the BFF. The API URL is a
 # server-side runtime variable; nothing secret is baked into the image.
 
-FROM node:22-bookworm-slim AS base
+FROM node:26-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /repo
@@ -26,7 +26,7 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 RUN pnpm -r --filter './packages/*' build && pnpm --filter @voxeli/web build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
   && rm -rf /var/lib/apt/lists/* \
